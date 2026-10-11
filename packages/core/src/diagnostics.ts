@@ -158,6 +158,10 @@ export const DIAGNOSTIC_SEVERITY = {
   REVIEW_NOT_RECORDABLE: "error",
   /** Review Record: a record with this ID exists with other content, or its ID does not match its content; nothing is overwritten. */
   REVIEW_RECORD_INTEGRITY: "error",
+  /** H-82 (C264): the reviewed snapshot (INDEX or a commit) and the working tree differ where the review reads; no verdict. */
+  REVIEW_SNAPSHOT_MISMATCH: "error",
+  /** H-82 (C265): a required review analysis stage (review or task Context) did not complete; no verdict, not an ASK. */
+  REVIEW_ANALYSIS_INCOMPLETE: "error",
   /** Init (T14): the repository already has a DUO project (.duo-project/project.yaml); nothing is changed. */
   INIT_ALREADY_INITIALIZED: "error",
   /** Init: .duo-project exists without project.yaml; applying needs an explicit repair. */
@@ -253,7 +257,7 @@ export const DIAGNOSTIC_PERSISTENCE = {
   DECISION_LOCK_MISMATCH: P, DECISION_INTEGRITY_INVALID: P, DECISION_SOURCE_INVALID: P,
   SOURCE_LOCATION_INVALID: P,
   CONTEXT_REQUEST_INVALID: T,
-  REVIEW_RECORD_FORBIDDEN: T, REVIEW_NOT_RECORDABLE: T, REVIEW_RECORD_INTEGRITY: T,
+  REVIEW_RECORD_FORBIDDEN: T, REVIEW_NOT_RECORDABLE: T, REVIEW_RECORD_INTEGRITY: T, REVIEW_SNAPSHOT_MISMATCH: T, REVIEW_ANALYSIS_INCOMPLETE: T,
   INIT_ALREADY_INITIALIZED: T, INIT_REPAIR_REQUIRED: T, INIT_INCOMPATIBLE: T, INIT_CONFLICT: T, INIT_PLAN_INVALID: T, INIT_PLAN_STALE: T,
   INIT_ANSWER_INVALID: T, INIT_VALIDATION_FAILED: T, INIT_APPLY_FAILED: T,
   ADOPTION_FORBIDDEN: T, ADOPTION_INDEX_REQUIRED: T, ADOPTION_HEAD_REQUIRED: T, ADOPTION_DIRTY_POLICY_REQUIRED: T, ADOPTION_BASELINE_EXISTS: T,

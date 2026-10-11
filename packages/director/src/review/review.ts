@@ -38,6 +38,7 @@ import {
 import { unlinkedAdditions } from "./scope.js";
 import { diffSeeds } from "./seeds.js";
 import { semanticAssist } from "./semantic.js";
+import { analysisIncomplete, checkReviewedSnapshot, outsideLimitation, snapshotMismatch } from "./snapshot.js";
 import type { Alignment, ChangedFile, ReviewClaim, ReviewLimitation, ReviewPerformance, ReviewRequest, ReviewRequestIdentity, ReviewResult } from "./types.js";
 
 export interface ReviewOptions {
@@ -163,6 +164,10 @@ export async function reviewChanges(root: string, request: ReviewRequest, option
   const diff = await collectDiff(git.value, root, request.diff, store);
   diagnostics.push(...diff.diagnostics);
   if (diff.value === undefined) return { diagnostics: canonicalDiagnostics(diagnostics) };
+  // H-82 (C264): the index and Project Truth describe the working tree; another reviewed side is decided only where they are the same.
+  const snapshot = await checkReviewedSnapshot(git.value, request.diff.to, diff.value.files);
+  if (snapshot.value === undefined) return { diagnostics: snapshot.diagnostics };
+  if (snapshot.value.mismatch.length > 0) return { diagnostics: [snapshotMismatch(request.diff.to, diff.value.to, snapshot.value.mismatch)] };
   // T15.1: Truth files still exactly as init wrote them (Adoption Baseline bootstrapTruth) are classified, not reviewed.
   const allFiles = await classifyBootstrap(root, git.value, request.diff.to, diff.value.files, adoption.baseline?.bootstrapTruth ?? []);
   const files = allFiles.filter((f) => f.provenance === undefined);
@@ -178,12 +183,15 @@ export async function reviewChanges(root: string, request: ReviewRequest, option
   let reviewContext: ContextResult | undefined;
   if (seeds.length > 0 || task !== "") {
     const r = await compileContext(root, { task, ...budget, profile: "review", explicitSeeds: seeds.map((s) => s.entity) }, withInspection);
+    // H-82 (C265): the review Context feeds the Knowledge Gap assessment (the only source of ASK) and the rules; without it there is no verdict.
+    if (r.value === undefined) return { diagnostics: [analysisIncomplete("review Context", r.diagnostics), ...r.diagnostics] };
     diagnostics.push(...r.diagnostics);
     reviewContext = r.value;
   }
   let taskContext: ContextResult | undefined;
   if (task !== "") {
     const r = await compileContext(root, { task, ...budget }, withInspection);
+    if (r.value === undefined) return { diagnostics: [analysisIncomplete("task Context", r.diagnostics), ...r.diagnostics] };
     diagnostics.push(...r.diagnostics);
     taskContext = r.value;
   }
@@ -249,6 +257,7 @@ export async function reviewChanges(root: string, request: ReviewRequest, option
       ...analysisLimitsOf(files, options.graph),
       ...drift.limitations,
       ...imports.limitations,
+      ...outsideLimitation(diff.value.to, snapshot.value.outside),
       ...(adoption.status === "incompatible" ? [{ code: "adoption-baseline-unusable", message: "The Adoption Baseline cannot be used (" + (adoption.reason ?? "unreadable") + "); violations are not told apart from pre-existing ones." }] : []),
     ],
     semanticAssist: semantic.assist,
