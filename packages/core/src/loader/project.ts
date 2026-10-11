@@ -14,6 +14,7 @@ import { canonicalSourceText } from "../location.js";
 import { compareUtf8 } from "../order.js";
 import { toRepoPath, type RepoPath } from "../paths.js";
 import { analyzeTrace, type TraceModel, type TracePolicy } from "../trace/trace.js";
+import { decisionAuthorityDiagnostics } from "../decisions/integrity.js";
 
 export interface LoadProjectOptions {
   readonly tracePolicy?: TracePolicy;
@@ -117,13 +118,14 @@ export function loadProjectTruth(root: string, options: LoadProjectOptions = {})
   }
 
   const proposalsDir = path.join(stateDir, "decisions", "proposals");
+  const decisionsDir = path.join(stateDir, "decisions");
   const markdownDirs = ["specs", "decisions", "milestones"].map((d) => path.join(stateDir, d));
   for (const dir of markdownDirs) {
     for (const file of listFiles(root, dir, [".md"], diagnostics)) {
       if (file.absolute.startsWith(proposalsDir + path.sep)) continue;
       const text = read(file);
       if (text === undefined) continue;
-      const r = parseDefinitionMarkdown(file.path, text);
+      const r = parseDefinitionMarkdown(file.path, text, { decisionSource: dir === decisionsDir });
       diagnostics.push(...r.diagnostics);
       if (r.value !== undefined) merge(defs, r.value);
     }
@@ -151,6 +153,8 @@ export function loadProjectTruth(root: string, options: LoadProjectOptions = {})
 
   const trace = analyzeTrace({ ...defs, references: config.value.references }, options.tracePolicy);
   diagnostics.push(...trace.diagnostics);
+  // H-82: lock and lifecycle integrity of the current Decision set (errors, so authoritative operations fail closed).
+  diagnostics.push(...decisionAuthorityDiagnostics(defs.decisions));
   // One gap per ID: the same owner, key and text in two places is one known unknown (first by file order).
   const gapIds = new Set<string>();
   const gaps = defs.gaps.filter((g) => {

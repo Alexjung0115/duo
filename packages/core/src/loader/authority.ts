@@ -26,7 +26,7 @@ export function projectTruthInvalid(errors: readonly Diagnostic[]): Diagnostic {
   const files = [...new Set(errors.map((e) => e.source?.path).filter((p): p is string => p !== undefined))];
   const where = files.length === 0 ? "" : `: ${files.slice(0, 3).join(", ")}${files.length > 3 ? ` and ${files.length - 3} more` : ""}`;
   return createDiagnostic("PROJECT_TRUTH_INVALID",
-    `Project Truth could not be read completely (${errors.length} error${errors.length === 1 ? "" : "s"}${where}). DUO does not review, compile context or change Decisions on partial Truth. Fix the file; DUO does not change it.`);
+    `Project Truth could not be read completely or is inconsistent (${errors.length} error${errors.length === 1 ? "" : "s"}${where}). DUO does not review, compile context or change Decisions on partial or inconsistent Truth. Fix the file; DUO does not change it.`);
 }
 
 /**

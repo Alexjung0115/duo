@@ -5,7 +5,7 @@
 ## 신뢰 모델
 
 - DUO는 사용자 로컬 머신에서 사용자 권한으로 실행된다.
-- Coding Agent는 **악의적이지 않지만 실수할 수 있는** 주체로 가정한다. DUO는 Agent가 파일 시스템에 직접 쓰는 것을 막을 수 없다. 따라서 `.duo-project` 보호와 Decision Lock은 **강제가 아니라 탐지**다. 탐지는 lock digest, Git HEAD 기준선, Review의 R-LOCK 규칙으로 한다.
+- Coding Agent는 **악의적이지 않지만 실수할 수 있는** 주체로 가정한다. DUO는 Agent가 파일 시스템에 직접 쓰는 것을 막을 수 없다. 따라서 `.duo-project` 보호와 Decision Lock은 **강제가 아니라 탐지**다. 탐지는 lock digest, Git HEAD 기준선, Review의 R-LOCK 규칙으로 한다. H-82(T67)부터 lock 불일치와 lifecycle 모순은 review 범위와 상관없이 현재 상태에서 탐지하고 authority 작업을 막는다. 범위 밖 삭제, digest 재계산, lock 삭제는 현재 상태만으로 구별할 수 없는 남는 한계다.
 - `duoctl decision`의 TTY 요구와 UI의 ID 재입력은 Agent의 실수를 막는 장치이며 보안 경계가 아니다. lock digest도 무결성 표시일 뿐 서명이 아니다.
 - DecisionService의 actor는 호출자가 주는 값이다(T09). agent·system actor는 confirm/reject가 막히고 쓰기가 `decisions/proposals/`로 좁혀지지만, 호출자가 human이라고 속이는 것을 막지는 못한다. CLI(TTY)와 UI(ID 재입력)가 그 호출 경로다. `duoctl decision review-pending`(T44)도 같은 경로다: TTY 전용이고, 고른 proposal을 보인 candidate digest에 묶어 하나씩 같은 confirm으로 확정할 뿐 권한·검사를 건너뛰지 않으며, agent·MCP에서는 시작할 수 없다.
 - 탐지를 의도적으로 우회하는 적대적 Agent는 v0.1 범위 밖이다.

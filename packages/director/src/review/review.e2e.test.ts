@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { AnalyzerRegistry } from "@duo-director/analyzer";
+import { decisionLockDigest, loadProjectTruth } from "@duo-director/core";
 import { openProjectGraphStore } from "@duo-director/graph";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { contextRegistry, HISTORY, makeContextRepo, REVIEW_FIXTURE, type ContextRepo } from "../context/testing.js";
@@ -128,10 +129,33 @@ describe("Evidence-backed Review (TASK-013)", () => {
     expect(res.semanticAssist).toMatchObject({ status: "disabled", calls: 0, skippedChecks: [{ rule: "requirement-implementation", reason: "llm-disabled" }] });
   });
 
-  it("F. a confirmed Decision edited in place: decision-integrity CONFLICT, BLOCK", async () => {
-    const res = await scenario(repo, () => repo.edit(".duo-project/decisions/D-010.yaml", "answer: usage reports query the read replica", "answer: usage reports query the primary"), { diff: W });
+  it("F. a confirmed Decision edited in place (H-82): with its old lock no verdict; with a recomputed lock R-LOCK blocks", async () => {
+    const D10 = ".duo-project/decisions/D-010.yaml";
+    const editAnswer = () => repo.edit(D10, "answer: usage reports query the read replica", "answer: usage reports query the primary");
+    // The current state contradicts its lock: the authority boundary refuses before any verdict (C262).
+    await expect(scenario(repo, editAnswer, { diff: W })).rejects.toThrow(/PROJECT_TRUTH_INVALID.*DECISION_INTEGRITY_INVALID.*D-010/su);
+    // A recomputed lock makes the current state consistent; the in-range change is R-LOCK's, as before (A9).
+    const relock = () => {
+      editAnswer();
+      const d = loadProjectTruth(repo.root).value?.truth.decisions.find((x) => x.id === "D-010");
+      if (d === undefined) throw new Error("D-010 missing");
+      const file = path.join(repo.root, D10);
+      fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/digest: .*$/mu, `digest: ${decisionLockDigest(d)}`));
+    };
+    const res = await scenario(repo, relock, { diff: W });
     expect(res.seeds.map((s) => s.ref)).toEqual(["D-010"]);
     expect(claim(res, "decision-integrity")).toMatchObject({ subject: { id: "D-010" }, alignment: "CONFLICT", reason: "confirmed-content-changed", blockEligible: true, basis: ["project-truth", "git"] });
+    expect(res.verdict).toBe("BLOCK");
+  });
+
+  it("F2. C261 in range: a confirmed Decision moved to rejected without its lock blocks (it is not a quiet loss of authority)", async () => {
+    const D10 = ".duo-project/decisions/D-010.yaml";
+    const reject = () => {
+      const file = path.join(repo.root, D10);
+      fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^state: confirmed$/mu, "state: rejected").replace(/^lock:\r?\n\s+digest: .*\r?\n?/mu, ""));
+    };
+    const res = await scenario(repo, reject, { diff: W });
+    expect(claim(res, "decision-integrity")).toMatchObject({ subject: { id: "D-010" }, alignment: "CONFLICT", reason: "confirmed-decision-retired", blockEligible: true });
     expect(res.verdict).toBe("BLOCK");
   });
 

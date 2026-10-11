@@ -84,7 +84,7 @@ interface Claim {
 
 | 규칙(구현) | 표의 규칙 | 조건 | Alignment | enforced |
 |---|---|---|---|---|
-| decision-integrity | R-LOCK | diff 이전에 confirmed였던 Decision의 content digest가 바뀜, lock mismatch, confirmed Decision 삭제 | CONFLICT | 예 |
+| decision-integrity | R-LOCK | diff 이전에 confirmed였던 Decision의 content digest가 바뀜, lock mismatch, confirmed Decision 삭제, confirmed였던 Decision이 proposed·rejected가 됨(`confirmed-decision-retired`, H-82). 현재 상태가 lock 불일치·lifecycle 모순이면 규칙 전에 `PROJECT_TRUTH_INVALID`로 실패한다(H-82) | CONFLICT | 예 |
 | | | lock 없이 confirmed(수동) | UNKNOWN(drift) | - |
 | | | lock 유효(lifecycle만 바뀜, lock과 함께 새로 확정) | ALIGNED | - |
 | supersede-integrity | R-LOCK | 새 Decision의 supersedes 대상이 superseded_by로 이어지지 않음 | PARTIAL(아니면 ALIGNED) | - |

@@ -42,6 +42,7 @@ export {
 } from "./decisions/files.js";
 export { planConfirmSession, sessionOrder, type ConfirmSessionItem, type ReviewedProposal } from "./decisions/session.js";
 export { decisionLockDigest, definitionDigest, stableJson, truthDigest, verifyDecisionLock, type LockStatus, type LockVerification } from "./decisions/digest.js";
+export { decisionAuthorityDiagnostics } from "./decisions/integrity.js";
 export { nextDecisionId, nextProposalId } from "./decisions/ids.js";
 export {
   listDecisionProposals, pendingDecisionProposals, repairDecisionState, type DecisionProposalEntry, type ProposalStatus,

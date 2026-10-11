@@ -26,7 +26,23 @@ function headingId(heading: MarkdownHeading): { id: string; title: string } {
 }
 
 /** Reads every definition in one Markdown document. Never throws. */
-export function parseDefinitionDocument(doc: MarkdownDocument): ParseResult<DefinitionSet> {
+export interface DefinitionDocumentOptions {
+  /** H-82 (C263): the file is under decisions/, so a Decision-like frontmatter that is not read as a Decision is an error. */
+  readonly decisionSource?: boolean;
+}
+
+const DECISION_ID = /^D-\d+$/u;
+
+/** Why a frontmatter that is not exactly type "decision" still looks like a Decision, or undefined. */
+function decisionLike(data: Record<string, unknown>): string | undefined {
+  const type = data["type"];
+  if (typeof type === "string" && type.trim().toLowerCase() === "decision") return `type "${type}" is not exactly "decision"`;
+  const id = data["id"];
+  if (typeof id === "string" && DECISION_ID.test(id.trim())) return type === undefined ? `id ${id.trim()} without type` : `id ${id.trim()} with type ${JSON.stringify(type)}`;
+  return undefined;
+}
+
+export function parseDefinitionDocument(doc: MarkdownDocument, options: DefinitionDocumentOptions = {}): ParseResult<DefinitionSet> {
   const out = emptyDefinitionSet();
   const diagnostics: Diagnostic[] = [];
   // An ADR-style Decision is the whole file: [start of text, end of text).
@@ -43,6 +59,13 @@ export function parseDefinitionDocument(doc: MarkdownDocument): ParseResult<Defi
         const decision = mapDecision(valid.value, wholeFile, new MapContext(parsed.value, doc.frontmatter.location, diagnostics));
         out.decisions.push(decision);
         sections.push({ start: 0, end: doc.length + 1, owner: definitionRef("decision", decision.id) });
+      }
+    } else if (options.decisionSource === true && parsed.value !== undefined && isRecord(parsed.value.data)) {
+      const why = decisionLike(parsed.value.data);
+      if (why !== undefined) {
+        diagnostics.push(createDiagnostic("DECISION_SOURCE_INVALID",
+          `${doc.path}: the frontmatter looks like a Decision (${why}) but is not read as one; an ADR-style Decision needs type: decision. Fix the frontmatter; DUO does not change it.`,
+          doc.frontmatter.location));
       }
     }
   }
@@ -140,9 +163,9 @@ export function parseDefinitionDocument(doc: MarkdownDocument): ParseResult<Defi
 }
 
 /** Convenience: parse Markdown text and read its definitions. */
-export function parseDefinitionMarkdown(path: string, text: string): ParseResult<DefinitionSet> {
+export function parseDefinitionMarkdown(path: string, text: string, options: DefinitionDocumentOptions = {}): ParseResult<DefinitionSet> {
   const md = parseMarkdown(path, text);
   if (md.value === undefined) return { diagnostics: md.diagnostics };
-  const defs = parseDefinitionDocument(md.value);
+  const defs = parseDefinitionDocument(md.value, options);
   return { value: defs.value ?? emptyDefinitionSet(), diagnostics: [...md.diagnostics, ...defs.diagnostics] };
 }

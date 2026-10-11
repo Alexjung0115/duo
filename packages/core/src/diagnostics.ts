@@ -140,6 +140,10 @@ export const DIAGNOSTIC_SEVERITY = {
   DECISION_CONFIRM_PREVIEW_CHANGED: "error",
   /** A confirmed Decision's lock.digest does not match its content fields (a detection aid, not a signature). */
   DECISION_LOCK_MISMATCH: "warning",
+  /** H-82 (C261, C262): the current Decision set contradicts itself: a lock that no longer matches its content, or a lifecycle the confirm workflow cannot produce. */
+  DECISION_INTEGRITY_INVALID: "error",
+  /** H-82 (C263): a decisions/ Markdown file whose frontmatter looks like a Decision is not read as one (its type is not exactly "decision"). */
+  DECISION_SOURCE_INVALID: "error",
   /** T44 (F-07): a confirm session refused a proposal whose result depends on an earlier proposal of the same session. */
   DECISION_SESSION_CONFLICT: "error",
   /** T40 (N1): an authoritative operation refused partial Project Truth; the loader errors follow it. */
@@ -246,7 +250,7 @@ export const DIAGNOSTIC_PERSISTENCE = {
   INDEX_STATE_INVALID: T,
   DECISION_ACTOR_FORBIDDEN: T, PROPOSAL_NOT_FOUND: T, PROPOSAL_NOT_PENDING: T, PROPOSAL_INVALID: T, PROPOSAL_STALE: T,
   DECISION_LOCKED: T, DECISION_TARGET_UNSUPPORTED: T, DECISION_SUPERSEDE_TARGET_INVALID: T, DECISION_LOCK_BUSY: T, DECISION_CONFIRM_PREVIEW_CHANGED: T, DECISION_SESSION_CONFLICT: T, PROJECT_TRUTH_INVALID: T,
-  DECISION_LOCK_MISMATCH: P,
+  DECISION_LOCK_MISMATCH: P, DECISION_INTEGRITY_INVALID: P, DECISION_SOURCE_INVALID: P,
   SOURCE_LOCATION_INVALID: P,
   CONTEXT_REQUEST_INVALID: T,
   REVIEW_RECORD_FORBIDDEN: T, REVIEW_NOT_RECORDABLE: T, REVIEW_RECORD_INTEGRITY: T,

@@ -70,6 +70,7 @@ proposal 파일에 `state: rejected`, `rejected_at`, `rejected_by`, `reason`(선
 
 - `lock.digest` = `sha256`(내용 필드를 정규화한 JSON). 내용 필드는 title, kind, question, answer, rationale, governs, forbids, enforcement, supersedes다(Decision schema에 없는 `match`는 빠진다, C70).
 - Review의 R-LOCK은 digest 불일치와 HEAD 기준 내용 변경을 모두 검사한다(ADR-007). `verifyLock`은 불일치를 `DECISION_LOCK_MISMATCH`(persistent)로 알린다.
+- 현재 상태 검사(H-82, T67): loader가 현재 Decision 집합 전체의 lock 불일치와 lifecycle 모순(lock이 있는 Decision의 proposed·rejected, `superseded_by`가 자신을 supersede하지 않는 Decision을 가리킴 등)을 `DECISION_INTEGRITY_INVALID` error로 내고, review·context·baseline·lifecycle은 `PROJECT_TRUTH_INVALID`로 막힌다(diff 밖의 commit된 변경도). lifecycle field는 digest에 넣지 않는다(AC-009-03). 현재 상태만으로 탐지할 수 없는 것: 범위 밖의 Decision 파일 삭제(범위 안에서만 `confirmed-decision-removed`), digest 재계산 위조, lock 삭제(manual fallback과 구별 불가).
 - digest는 **실수 탐지용 무결성 표시이며 보안 서명이 아니다**. 악의적인 Agent는 digest를 다시 계산할 수 있다. 이 한계는 [10-security.md](../10-security.md)에 적는다.
 - `.duo-project/decisions/` 안의 Markdown Decision(ADR 형식)은 DecisionService가 쓰지 않으며 HEAD 기준 검사만 받는다. `.duo-project` 밖 문서의 결정 서술은 Decision이 아니라 External Evidence다(ADR-014).
 - enforcement는 metadata로 저장하고 Graph payload에 싣는다. 실제 판정은 TASK-013이다.

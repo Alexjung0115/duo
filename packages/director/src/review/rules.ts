@@ -75,7 +75,15 @@ export async function decisionIntegrity(ctx: RuleContext): Promise<ReviewClaim[]
         }
         continue;
       }
-      if (n.state !== "confirmed" && n.state !== "superseded") continue;
+      if (n.state !== "confirmed" && n.state !== "superseded") {
+        // H-82 (C261): a confirmed Decision does not go back to proposed or rejected; that would drop its authority.
+        if (wasConfirmed) {
+          const c = makeClaim(ctx, { rule: "decision-integrity", subject, alignment: "CONFLICT", reason: "confirmed-decision-retired", enforced: true, evidence,
+            expected: `${id} stays confirmed or is superseded through the Decision lifecycle`, observed: `${id} is ${n.state}` });
+          if (c !== undefined) out.push(c);
+        }
+        continue;
+      }
       const lock = verifyDecisionLock(n).value;
       let c: ReviewClaim | undefined;
       if (wasConfirmed && decisionLockDigest(o) !== decisionLockDigest(n)) {

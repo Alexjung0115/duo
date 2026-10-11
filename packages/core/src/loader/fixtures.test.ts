@@ -34,7 +34,7 @@ describe("loadProjectTruth — valid project (fixtures/auth-app)", () => {
     expect(truth?.config).toMatchObject({ schemaVersion: 1, name: "auth-app", currentMilestone: "M1", sources: { markdown: ["README.md"] } });
     expect(truth?.vision).toMatchObject({ status: "confirmed", owner: "human" });
     expect(truth?.requirements.map((q) => [q.id, q.status, q.location.startLine])).toEqual([["AUTH-01", "done", 3], ["AUTH-03", "planned", 17]]);
-    expect(truth?.decisions[0]).toMatchObject({ id: "D-004", state: "confirmed", lock: { digest: "sha256:3f1c9a" }, forbids: { dependencies: ["express-session"] } });
+    expect(truth?.decisions[0]).toMatchObject({ id: "D-004", state: "confirmed", lock: { digest: "sha256:b97e32172deacef227ee6196695f670293c43cc11958a8545ba066037984c984" }, forbids: { dependencies: ["express-session"] } });
     expect(truth?.constraints[0]).toMatchObject({
       id: "CON-001", enforcement: "warn",
       sources: [{ kind: "external", path: "README.md", hash: "sha256:5b1e0c", section: "Scope" }],
@@ -48,8 +48,8 @@ describe("loadProjectTruth — valid project (fixtures/auth-app)", () => {
   });
 
   it("gives YAML and Markdown definitions the same SourceLocation contract (start and end)", () => {
-    // Line 19 is '  digest: "sha256:3f1c9a"' (25 characters): the exclusive end column is 26.
-    expect(truth?.decisions[0]?.location).toEqual({ path: ".duo-project/decisions/D-004.yaml", startLine: 1, startColumn: 1, endLine: 19, endColumn: 26 });
+    // Line 19 is '  digest: "sha256:<64 hex>"' (83 characters): the exclusive end column is 84. H-82: the lock is the real digest of D-004.
+    expect(truth?.decisions[0]?.location).toEqual({ path: ".duo-project/decisions/D-004.yaml", startLine: 1, startColumn: 1, endLine: 19, endColumn: 84 });
     expect(truth?.constraints[0]?.location).toMatchObject({ path: ".duo-project/intent/constraints.yaml", startLine: 2, endLine: 12 });
     expect(truth?.milestones[0]?.location).toMatchObject({ startLine: 1, endLine: 4 });
     expect(truth?.requirements[0]?.location).toMatchObject({ startLine: 3, startColumn: 1, endLine: 17, endColumn: 1 });
