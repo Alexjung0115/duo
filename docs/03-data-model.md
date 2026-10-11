@@ -116,7 +116,7 @@ DUO가 어디에 쓸 수 있는지는 core의 순수 정책 함수 `checkWriteBo
 | type | 필드 |
 |---|---|
 | requirement | `status`(planned, in_progress, done, deferred), `milestone`, `priority`(must, should, could), `source`(인용 라벨 또는 `{path, hash, section?}`), `implements`({paths, symbols}), `tests`, `depends_on`, `extensions` |
-| issue | `status`(todo, in_progress, review, done, 필수), `milestone`, `package`, `requirements`, `decisions`, `depends_on`, `extensions` |
+| issue | `status`(todo, in_progress, review, done, 필수), `milestone`, `package`, `requirements`, `decisions`, `depends_on`, `implements`({paths}, H-78), `extensions` |
 | milestone | `title`, `state`(planned, active, done), `issues`(Issue ID 목록), `extensions` |
 
 예:
@@ -138,7 +138,7 @@ Access token이 만료되면 refresh token으로 재발급한다.
 
 ## Issue 소유권
 
-Issue의 내용과 AC는 **Markdown Issue 정의 한 곳**(`type: issue`)만 소유한다. Milestone은 Issue를 ID로만 참조하고 다시 정의하지 않는다.
+Issue의 내용과 AC는 **Markdown Issue 정의 한 곳**(`type: issue`)만 소유한다. Issue `implements.paths`(H-78, 선택)는 그 Issue가 구현·변경할 것으로 선언한 저장소 경로 범위이며 Requirement `implements.paths`와 같은 pattern 규칙을 쓴다(`symbols`는 없음). Graph builder가 일치하는 File마다 File IMPLEMENTS Issue(declared)를 만든다. relevance·traceability metadata일 뿐 enforcement·forbids 범위나 수정 제한이 아니며, 본문 경로를 추출하거나 `depends_on`으로 상속하지 않는다. Milestone은 Issue를 ID로만 참조하고 다시 정의하지 않는다.
 
 ```yaml
 # milestones/M1.yaml
@@ -349,7 +349,7 @@ TASK-011. Gap은 "지금 작업에 중요한데 아직 정해지지 않은 것"�
 | `ambiguous-target` | Context `ambiguous`(선택지 포함) | ask |
 | `unresolved-target` | Task에 쓴 ID가 Project Truth에 없음 | ask |
 | `pending-decision` | Packet `pendingDecisions`. `requiresHumanDecision`이면 ask, 아니면 surface | ask / surface |
-| `missing-intent` | seed 없음, 또는 `no-confirmed-intent` signal | surface |
+| `missing-intent` | seed 없음, 또는 `no-confirmed-intent` signal | surface(Review verdict 근거 아님, H-80) |
 
 모델 `KnowledgeGap { id, source, kind, text?(Declared만), anchors, location?, relevance, reasons, action, key?, resolution?, term?, options?, target?, pending? }`와 평가 결과 `KnowledgeGapAssessment`는 [05 Knowledge Gap assessment](05-context-compiler.md#knowledge-gap-assessment)에 있다.
 
@@ -360,7 +360,7 @@ type Diagnostic = { code: DiagnosticCode; severity: "error" | "warning" | "info"
 type ParseResult<T> = { value?: T; diagnostics: readonly Diagnostic[] };
 ```
 
-Parser와 loader는 예외를 던지지 않고 모든 문제를 모은다. 일부 파일이 실패해도 읽을 수 있는 Project Truth는 value로 돌려준다. 코드와 기본 심각도는 `DIAGNOSTIC_SEVERITY`에 있다.
+Parser와 loader는 예외를 던지지 않고 모든 문제를 모은다. 일부 파일이 실패해도 읽을 수 있는 Project Truth는 value로 돌려준다. **Authority 경계(T40, N1)**: 이 관대한 계약은 그대로이고, 권위 있는 판정을 하는 작업(review, context, Adoption Baseline 캡처, Decision confirm·reject·repair·preview)은 \`requireCompleteTruth\`를 거친다. loader error가 하나라도 있으면(내용을 빼지 않는 \`BROKEN_REFERENCE\`, \`REFERENCE_TYPE_MISMATCH\` 제외, 나중에 생기는 코드도 막는다) \`PROJECT_TRUTH_INVALID\`와 각 파일 진단으로 실패하고 verdict, Context Packet, baseline, Decision 변경을 만들지 않는다. 읽지 못한 Decision이 빠진 채 PASS가 나오는 일을 막기 위해서다. status·doctor·index·trace·search·propose는 계속 동작하며 status \`truth.errors\`, doctor \`truth.project: invalid\`로 보인다. DUO는 문제 파일을 고치거나 지우지 않는다. 코드와 기본 심각도는 `DIAGNOSTIC_SEVERITY`에 있다.
 
 **Persistent / transient(T08.1)**: 코드마다 성격을 중앙 registry `DIAGNOSTIC_PERSISTENCE`에 둔다(`satisfies Record<DiagnosticCode, …>`라 새 코드는 분류 없이 컴파일되지 않는다).
 
@@ -378,7 +378,7 @@ Parser와 loader는 예외를 던지지 않고 모든 문제를 모은다. 일�
 | 추적성 | `DUPLICATE_ID`, `BROKEN_REFERENCE`, `REFERENCE_TYPE_MISMATCH`, `DECISION_SUPERSEDES_SELF`, `DECISION_SUPERSEDE_CYCLE`, `TRACE_MILESTONE_MISMATCH`(warning), `TRACE_DECISION_UNRELATED`(warning), `TRACE_REQUIREMENT_UNTRACKED`(info) |
 | Graph DB | `GRAPH_SCHEMA_UNSUPPORTED`, `GRAPH_OPEN_FAILED` |
 | Indexer(T08) | `INDEX_STATE_INVALID`(warning, 전체 재구축) |
-| DecisionService(T09) | `DECISION_ACTOR_FORBIDDEN`, `PROPOSAL_NOT_FOUND`, `PROPOSAL_NOT_PENDING`, `PROPOSAL_INVALID`, `PROPOSAL_STALE`(warning), `DECISION_LOCKED`, `DECISION_TARGET_UNSUPPORTED`, `DECISION_SUPERSEDE_TARGET_INVALID`, `DECISION_LOCK_BUSY`(모두 transient), `DECISION_LOCK_MISMATCH`(warning, persistent) |
+| DecisionService(T09) | `DECISION_ACTOR_FORBIDDEN`, `PROPOSAL_NOT_FOUND`, `PROPOSAL_NOT_PENDING`, `PROPOSAL_INVALID`, `PROPOSAL_STALE`(warning), `DECISION_LOCKED`, `DECISION_TARGET_UNSUPPORTED`, `DECISION_SUPERSEDE_TARGET_INVALID`, `DECISION_LOCK_BUSY`, `DECISION_CONFIRM_PREVIEW_CHANGED`(T34.2)(모두 transient), `DECISION_LOCK_MISMATCH`(warning, persistent) |
 | Graph build(T07) | `TSCONFIG_INVALID`(warning), `MODULE_UNRESOLVED`(warning), `MODULE_AMBIGUOUS`(warning), `CALL_AMBIGUOUS`(info), `CALL_UNRESOLVED`(info, 통계로만), `ANNOTATION_TARGET_UNKNOWN`(warning), `ANNOTATION_TARGET_UNSUPPORTED`(info), `TEST_ID_CONFLICT`(warning), `DECLARED_SYMBOL_UNRESOLVED`(warning), `EDGE_ENDPOINT_INVALID`, `GRAPH_NODE_CONFLICT`, `GRAPH_PAYLOAD_INVALID`, `GRAPH_WRITE_REFUSED`, `GRAPH_INVARIANT_VIOLATED` |
 
 ## 추적 관계
@@ -494,6 +494,8 @@ lock:
 
 ADR 형식 Markdown Decision은 같은 필드를 frontmatter에 두고 `type: decision`을 붙인다.
 
+`forbids`의 field는 서로 다른 것을 본다: `paths`는 바뀐 파일 경로, `symbols`는 바뀐 symbol의 qualified name(wildcard), `dependencies`는 package.json에 새로 추가된 dependency, `imported_paths`(H-72, `next`)는 diff의 바뀐 줄에 있는 import·module-reference 구문(TS·JS import, export-from, dynamic import, require, type-only 포함, Python import, C++ quoted include)이 index에서 정확히 해석된 repository 파일 경로다. `imported_paths`는 그 관계가 새로 생겼음을 증명하지 않고, 해석되지 않거나(unresolved, ambiguous) module resolution이 없는 언어(Java, C#)의 import는 확인하지 않는다(review limitation). 값이 있을 때만 domain model(`forbids.importedPaths`)과 lock digest에 들어가므로 `imported_paths`가 없는 Decision의 lock은 T37 전과 같다. `forbids`의 모든 field는 저장소 전체의 변경에 적용된다. `governs`는 Decision이 다루는 대상을 연결할 뿐 `forbids`의 범위를 좁히지 않는다. 예를 들어 `governs.paths: src/ui/**`와 `forbids.imported_paths: src/db/legacy-db.ts`를 함께 쓰면 `src/ui` 밖 파일의 바뀐 import도 위반이다(T39 확인). import하는 쪽의 경로로 범위를 제한하는 field는 없다.
+
 ## decisions/proposals/P-*.yaml
 
 Proposal은 Project Truth가 아니고 Graph Node도 아니다. Human이 confirm해야 Decision이 된다([ADR-013](adr/ADR-013-decision-lifecycle.md), TASK-009).
@@ -519,6 +521,7 @@ based_on:                  # stale 탐지용 provenance
 - Decision과 같은 내용 필드(title, kind, question, answer, rationale, governs, forbids, enforcement, supersedes, evidence, source, extensions)를 쓴다. `owner`는 confirm이 `human`으로 기록한다.
 - **propose**: agent, system, human 모두 가능하다. 쓰기 전에 loader와 같은 schema와 core 추적성 규칙(없는 참조, 대상 타입)으로 검사하고, 통과하면 `decisions/proposals/P-###.yaml` 하나만 새로 만든다. supersede 대상은 confirmed Decision이어야 한다.
 - **confirm**(human만): 다음 `D-###`으로 새 `decisions/D-###.yaml`을 exclusive하게 만들고 `proposal`, proposer, `confirmed_by/at`, `lock.digest`를 기록한다. 이 파일 생성이 commit 지점이다. 이어서 supersede 대상의 `state`와 `superseded_by`만 바꾸고 proposal 파일을 지운다. 이 두 단계가 실패하면 다음 DecisionService 조작이 먼저 마무리한다(repair). Project Truth가 proposal 이후 바뀌었으면 `PROPOSAL_STALE`(warning)와 바뀐 참조 목록을 돌려주고 확정은 진행한다.
+- **previewConfirm**(읽기 전용, T18.1·T34.2): proposal 또는 `state: proposed`·lock 없는 confirmed YAML Decision에 대해 confirm이 쓸 candidate를 confirm과 같은 읽기로 돌려준다: source(ID, 종류, 경로), 확정 방식(`create`, `confirm-in-place`, `add-lock`), 예상 Decision ID(보장 아님), 파일에 있는 내용 필드 그대로의 candidate(없는 field는 key가 없음), proposal이면 제안자(`proposedBy`, `proposedByKind`, 파일에 있을 때만, H-71), staleness, supersede 대상(id, title, 현재 state, 경로), digest. confirm에 `expectedDigest`를 주면 lock 안에서 candidate를 다시 읽어 digest가 다를 때 `DECISION_CONFIRM_PREVIEW_CHANGED`로 아무것도 쓰지 않는다.
 - **reject**(human만): 파일을 지우지 않고 `state: rejected`, `rejected_at`, `rejected_by`, `reason`을 기록한다. 다른 필드와 주석은 그대로다.
 - Proposal의 `supersedes`는 SUPERSEDES 링크를 만들지 않고 존재만 확인한다.
 - **조회(T09.1)**: 어느 proposal이 pending인지는 core `listDecisionProposals(truth)` 하나가 정한다. pending = `state: proposed` AND 그 proposal ID를 `proposal`로 가진 Decision이 없음이다. Decision이 있으면 파일이 남아 있어도 `committed`(`cleanupPending`)이고, `state: rejected`면 `rejected`다. 파일이 있다고 pending은 아니다. 조회는 읽기만 하고 repair하지 않는다. 남은 파일 정리는 명시적 mutation `repairDecisionState()`이며, DecisionService의 쓰기 조작(propose, confirm, reject)도 lock 안에서 먼저 repair한다. `duoctl status`, MCP `duo_get_status`, UI, Context Compiler는 `pendingDecisionProposals()`를 쓴다.
@@ -541,11 +544,13 @@ ReviewResult {
   gaps?: KnowledgeGapAssessment; context?: { review?, task?, profile: "review", seeds }
   limitations; semanticAssist; metrics; diagnostics
 }
-ReviewClaim { id, rule, subject, expected, observed, alignment, evidenceIds(≥1), basis[], reason, enforced, blockEligible, drift, semanticCandidate, violationKey?, provenance? }   // T14.1: baseline 규칙(decision-forbids, declared-reference, external-source-drift)
+ReviewClaim { id, rule, subject, expected, observed, alignment, evidenceIds(≥1), basis[], reason, enforced, blockEligible, drift, semanticCandidate, violationKey?, provenance?, decisionAuthority? }   // T14.1: baseline 규칙(decision-forbids, declared-reference, external-source-drift, H-72 decision-forbids-import)
+DecisionAuthority { state, active, supersedes, supersededBy }   // C241(T49): subject가 Truth의 Decision인 claim만
 ```
 
 - Claim ID는 `claim-` + hash(rule, subject, 구분 key, diff identity)이며 실행 시각이나 발견 순서를 쓰지 않는다.
-- PASS는 "DUO가 현재 Evidence 범위에서 방향 위반을 찾지 못했다"는 뜻이지 버그가 없다는 뜻이 아니다.
+- `decisionAuthority`(C241, T49, additive): subject가 Decision이고 rule이 읽은 같은 complete Project Truth에 그 ID가 있으면 붙는다. `state`·`supersedes`·`supersededBy`는 그 Decision 파일의 값 그대로이고, `active`는 rule이 쓰는 authority 판정(`confirmed`이고 `supersededBy`가 없음)이다. 직접 관계만 담고 chain을 풀거나 Git history에서 추론하지 않으며, 두 Decision의 값이 서로 맞지 않아도 고치지 않는다(판정은 `supersede-integrity`). verdict·claim ID·evidence 뒤에 붙는 설명이라 판정 signal이 아니고, semantic assist 입력과 Review Record body(따라서 Record ID)에 들어가지 않는다. Requirement·Constraint·file·test claim과 LLM semantic claim에는 없다.
+- PASS는 "DUO가 현재 Evidence 범위에서 방향 위반을 찾지 못했다"는 뜻이지 버그가 없다는 뜻이 아니다. PASS에도 surface된 `missing-intent` gap이 있을 수 있다(H-80): 확정 intent 연결을 찾지 못했다는 coverage signal이며 `verdictBasis.warn`에 들어가지 않는다. 다른 surface gap은 WARN 근거다.
 - T13.1 규칙: `unlinked-addition`(R-SCOPE, task가 있을 때 task 맥락 밖이고 IMPLEMENTS가 없는 추가 application 파일 → UNKNOWN drift, 의미 후보, BLOCK 불가), `external-source-drift`(R-DRIFT, 명시적 `{path, hash, section?}`의 hash 불일치 → PARTIAL). limitation `external-source-unavailable`(원격·저장소 밖·secret·없는 파일), `external-source-hash-invalid`.
 - `semanticAssist.provider`: 호출한 Provider의 `id`, 보고된 `model`, `cacheIdentity`(secret 없음).
 
@@ -612,10 +617,11 @@ EvidencePointer 필드: `kind`(requirement, decision, constraint, issue, milesto
 - **버전**: `/1`은 working tree Graph에서 finding을 계산했고 `bootstrapTruth`가 없다. 의미가 달라 `/2` reader는 `/1`을 `incompatible`로 읽고 다시 해석하지 않는다(Review는 provenance 없이 limitation `adoption-baseline-unusable`).
 - **거부**: actor가 human이 아님(`ADOPTION_FORBIDDEN`), index가 current가 아님(`ADOPTION_INDEX_REQUIRED`), commit 없음(`ADOPTION_HEAD_REQUIRED`), dirty인데 정책 없음(`ADOPTION_DIRTY_POLICY_REQUIRED`).
 - **Dirty policy**: `HEAD_BASELINE`(baseline commit = HEAD, staged·unstaged·untracked 변경은 adoption 이후 Review 대상으로 남음), `ABORT_AND_CLEAN`(아무것도 쓰지 않고 `aborted`). dirty working tree 전체를 snapshot으로 삼는 정책(`ADOPT_CURRENT_DIRTY`)은 MVP에 없다. working tree 관찰(`observeWorkingTree`)은 `.duo-project/`와 secret 파일(개수만)을 뺀다. `InitPlan.observed.workingTree`에도 같은 값(`workingTreeDirty`, 목록 50개 상한)이 있다.
-- **Findings**(결정적, LLM 없음, task가 필요한 R-SCOPE 제외): 활성 Decision의 `forbids` 일치(File, Symbol, package.json dependency), `DECLARED_SYMBOL_UNRESOLVED`, 로컬 External Source drift. **HEAD tree 기준**이다(T15.1, C136, director `headBaselineFindings`). 대상 파일은 HEAD tree에 있는 tracked 파일(include/exclude, secret, `.duo-project/` 제외)이다. working tree에서 새로 생긴 untracked 파일은 빠지고, working tree에서 지웠지만 HEAD에 있는 파일은 들어간다. HEAD와 내용이 다른 경로(staged, unstaged, conflicted, 삭제)는 `GitProvider.readBlob("HEAD")`로 읽어 기존 LanguageAnalyzer로 분석하고, 나머지 경로는 현재 Graph의 Symbol을 쓴다(내용이 같으므로). 별도 historical GraphStore는 만들지 않는다. 지원하지 않는 언어의 달라진 파일은 file 수준 사실만 남기고 limitation `head-symbols-unsupported-language`, 달라진 경로의 declared reference 판정은 근사이며 `declared-references-approximated-for-divergent-paths`, source drift는 HEAD의 파일 내용으로 판정한다.
+- **Findings**(결정적, LLM 없음, task가 필요한 R-SCOPE 제외): 활성 Decision의 `forbids` 일치(File, Symbol, package.json dependency, H-72 `imported_paths`: HEAD와 같은 tracked 파일의 Graph File→File IMPORTS, key `decision-forbids-import` + Decision + `import:<source>-><target>`), `DECLARED_SYMBOL_UNRESOLVED`, 로컬 External Source drift. **HEAD tree 기준**이다(T15.1, C136, director `headBaselineFindings`). 대상 파일은 HEAD tree에 있는 tracked 파일(include/exclude, secret, `.duo-project/` 제외)이다. working tree에서 새로 생긴 untracked 파일은 빠지고, working tree에서 지웠지만 HEAD에 있는 파일은 들어간다. HEAD와 내용이 다른 경로(staged, unstaged, conflicted, 삭제)는 `GitProvider.readBlob("HEAD")`로 읽어 기존 LanguageAnalyzer로 분석하고, 나머지 경로는 현재 Graph의 Symbol을 쓴다(내용이 같으므로). 별도 historical GraphStore는 만들지 않는다. 지원하지 않는 언어의 달라진 파일은 file 수준 사실만 남기고 limitation `head-symbols-unsupported-language`, 달라진 경로의 declared reference 판정은 근사이며 `declared-references-approximated-for-divergent-paths`, source drift는 HEAD의 파일 내용으로 판정한다.
 - **Bootstrap Truth**(T15.1, C138): 캡처 시점에 HEAD와 다른 `.duo-project/` Truth 파일(재생성 영역과 reviews/ 제외)의 경로와 정규화 텍스트 sha256. init이 만든 뒤 아직 commit하지 않은 Truth를 가리킨다. Review에서 HEAD→WORKTREE diff의 `.duo-project/` 파일 중 경로와 reviewed-side 정규화 hash가 `bootstrapTruth`와 같은 파일은 `ChangedFile.provenance = "adoption-bootstrap"`이다. diff 목록에는 남지만 Truth-changed seed, 규칙, limitation을 만들지 않는다. 한 글자라도 바뀌면 provenance가 없고 일반 Truth 변경으로 Review한다.
 - **Violation key**: `vk-` + 16 hex of sha256(rule, governing Truth entity, offending). offending은 node ID, `dep:<manifest>#<name>`, `ref:<field>:<name>`, `src:<path>#<section>`. 줄 번호·diff·시각을 넣지 않는다. Review의 baseline 규칙 claim은 `violationKey`를 가진다.
-- **Provenance**(Review): baseline에 key가 없으면 `introduced`(기존 BLOCK 정책), 있고 이번 diff가 위반 entity를 직접 바꿨으면 `pre-existing-touched`(blockEligible 아님, WARN), 있고 바꾸지 않았으면 `pre-existing`(historical, BLOCK·WARN 없음). 기존 forbidden Symbol의 내부가 바뀌었다고 "위반이 커졌다"고 추측하지 않는다. T18.0: baseline 당시 구조 분석이 없던 언어의 Symbol 위반이 baseline에 없으면 `unverified-at-adoption`(blockEligible 아님, WARN). baseline은 `analysis` {analyzerRegistryDigest, structuralLanguages}를 기록하고(없는 이전 record는 TS/JS), 다시 해석하지 않는다. baseline이 없거나(`missing`) 읽을 수 없으면(`incompatible`, limitation `adoption-baseline-unusable`) provenance를 붙이지 않는다. `ReviewResult.baseline = { status: missing|present|incompatible, id? }`.
+- **Provenance**(Review): baseline에 key가 없으면 `introduced`(기존 BLOCK 정책), 있고 이번 diff가 위반 entity를 직접 바꿨으면 `pre-existing-touched`(blockEligible 아님, WARN), 있고 바꾸지 않았으면 `pre-existing`(historical, BLOCK·WARN 없음). 기존 forbidden Symbol의 내부가 바뀌었다고 "위반이 커졌다"고 추측하지 않는다. T18.0: baseline 당시 구조 분석이 없던 언어의 Symbol 위반이 baseline에 없으면 `unverified-at-adoption`(blockEligible 아님, WARN). baseline은 `analysis` {analyzerRegistryDigest, structuralLanguages}를 기록하고(없는 이전 record는 TS/JS), 다시 해석하지 않는다. baseline이 없거나(`missing`) 읽을 수 없으면(`incompatible`, limitation `adoption-baseline-unusable`) provenance를 붙이지 않는다. `ReviewResult.baseline = { status: missing|present|incompatible, id? }`. H-72: baseline은 실제로 평가한 rule을 `evaluatedRules`에 기록한다. working tree(`.duo-project` 밖)가 dirty인 HEAD_BASELINE은 HEAD의 import 관계를 재구성하지 않으므로 `decision-forbids-import`를 넣지 않고 limitation `import-relations-not-evaluated-dirty-working-tree`를 남긴다. `evaluatedRules`가 없는 이전 baseline은 import rule을 평가했다고 보지 않는다: 그 baseline에서 import 위반은, governing Decision의 `confirmed_at`이 baseline `recorded.at`보다 분명히 뒤(UTC ISO 8601 비교)가 아니면 `unverified-at-adoption`(BLOCK 아님)이고, 뒤면 adoption 이후의 Human authority이므로 기존 정책(`introduced`면 BLOCK 후보)을 따른다. baseline 파일은 다시 해석하거나 고쳐 쓰지 않는다.
+- **machine 값의 정확한 의미**(H-73, C240): `provenance: "introduced"`는 위반 key가 Adoption Baseline에 없고 그 baseline이 해당 위반을 평가할 수 있었다는 뜻이다. 이번 diff가 그 코드 관계를 만들었다거나, 이 import를 새로 넣었다거나, 이 dependency를 처음 만들었다거나, Git history가 관계의 생성 시점을 증명한다는 뜻이 아니다. 예(H-72 `imported_paths`): baseline 뒤에 확정된 Decision이 금지한 기존 import 줄에서 binding만 고쳐도 `forbidden-import` claim이 생기고 provenance가 `introduced`일 수 있다. 이것은 그 위반 key가 baseline에 없다는 뜻일 뿐이다. 사람이 읽는 표시(CLI, MCP text, Web UI)는 같은 helper(`provenanceLabel`)로 `not-in-adoption-baseline`, `in-adoption-baseline`, `in-adoption-baseline, touched`, `baseline-unverified`를 쓴다. enum 이름, 계산, `blockEligible`, `duo.review/1`은 그대로다.
 - **Read model**: `getAdoptionBaselineStatus(root)` → `missing`(T14.1 이전 project 포함, 자동 캡처하지 않음), `current`(HEAD = baseline commit), `advanced`(baseline commit이 HEAD history에 있음), `repository-diverged`(history에 없거나 root commit이 다름), `incompatible`(손상, 변조, 여러 개). `loadAdoptionBaseline(root)`는 Git 없이 파일만 검증한다. 둘 다 쓰기 0이며 repair·재캡처를 하지 않는다.
 
 ## generated/, runtime/

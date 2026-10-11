@@ -11,8 +11,19 @@ import type { ContextTier } from "./types.js";
  * 2: T18.0, generic-file head window, capability limitations, cross-language factor, Python comment lines as leading context.
  * T24.1 (C217, C225) kept 2: it changed only the level texts of Symbols with more than one location, and those texts'
  * hashes are already in the Packet Dependency Digest; a bump would change the digest of every other Packet too.
+ * 3: H-76 (T42, F-23): explicit primary seeds (a Requirement or Issue named by exact ID) take their highest fitting
+ * representation before normal promotion; the selection changes, so old cached Packets must stop matching.
+ * 4: C249 (T46): an exact path token is not reused as BM25 keyword input (a task token that resolved to an existing File).
+ * 5: C252 (T47): repository-relative "./" and backslash path spellings resolve through the canonical RepoPath before
+ * exact path seeding.
+ * 6: C251 (T50): a task token that resolved to an exact Symbol seed (qualified name, unique name or one callable group)
+ * is not reused as BM25 keyword input.
+ * 7: C256 (T54): a task path keeps the leading dots of its first directory (".github/workflows/ci.yml") for exact path
+ * resolution.
+ * 8: H-79 (T55, C257): an indexed root File named without a separator (a leading dot, or a dot inside when no Symbol
+ * matches the word) is an exact path seed.
  */
-export const CONTEXT_POLICY_VERSION = "2";
+export const CONTEXT_POLICY_VERSION = "8";
 
 /** Per-hop multiplier. A candidate's order value is seed strength × Π hop weights (best path). */
 export const EDGE_WEIGHTS: Readonly<Record<Exclude<GraphEdgeType, "SUPERSEDES">, number>> = {

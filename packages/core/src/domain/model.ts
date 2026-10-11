@@ -85,6 +85,12 @@ export interface Issue extends DefinitionBase {
   readonly requirements: readonly string[];
   readonly decisions: readonly string[];
   readonly dependsOn: readonly string[];
+  /**
+   * H-78 (T45): repository path patterns this Issue declares it implements or changes. Relevance and traceability
+   * metadata (File IMPLEMENTS Issue edges): not an enforcement or forbids scope, not a limit on what the Issue may
+   * change, not ownership. Empty when not declared; never inferred from the body or inherited through depends_on.
+   */
+  readonly implements: { readonly paths: readonly string[] };
   readonly acceptance: readonly AcceptanceCriterion[];
   readonly description: string;
 }
@@ -106,7 +112,11 @@ export interface DecisionContent {
   readonly rationale?: string | undefined;
   readonly owner?: "human" | undefined;
   readonly governs: { readonly requirements: readonly string[]; readonly paths: readonly string[]; readonly symbols: readonly string[] };
-  readonly forbids: { readonly dependencies: readonly string[]; readonly symbols: readonly string[]; readonly paths: readonly string[] };
+  /**
+   * importedPaths (H-72): present only when the file has a non-empty imported_paths, so the lock digest
+   * of a Decision without it is unchanged (no empty default is injected).
+   */
+  readonly forbids: { readonly dependencies: readonly string[]; readonly symbols: readonly string[]; readonly paths: readonly string[]; readonly importedPaths?: readonly string[] };
   readonly supersedes: string | null;
   readonly evidence: readonly EvidencePointer[];
   readonly sources: readonly SourceRef[];

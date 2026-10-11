@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createDecisionService } from "@duo-director/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { CLI_MAIN, duoctl, existingProject, snapshot } from "../cli/support.js";
 import { contextRegistry, makeContextRepo, REVIEW_FIXTURE } from "../../packages/director/src/context/testing.js";
@@ -258,7 +259,159 @@ describe("Truth lookups and dirty-baseline Review provenance through MCP (TASK-0
     expect(byFile("legacy-session-store.ts")).toEqual([["pre-existing-touched", false]]);
     expect(byFile("server-session-store.ts")).toEqual([["introduced", true]]);
     expect(r.structuredContent.verdict).toBe("BLOCK");
+    // H-73 (C240): people read adoption-baseline wording; the machine values above are unchanged.
+    const summary = String(r.content[0]?.text);
+    // C241 (T49): a Decision claim's tags also carry its lifecycle.
+    expect(summary).toContain("(not-in-adoption-baseline) [blocking; current authority]");
+    expect(summary).toContain("(in-adoption-baseline, touched) [current authority]");
+    expect(summary).not.toMatch(/\((?:introduced|pre-existing|pre-existing-touched)\)/u);
+    const human = duoctl(root, ["review", "--task", "AUTH-03"]).stdout;
+    expect(human).toContain("[blocking, not-in-adoption-baseline]");
+    expect(human).toContain("[in-adoption-baseline, touched]");
+    expect(human).not.toMatch(/\[[^\]]*(?:introduced|pre-existing)[^\]]*\]/u);
     const truth = r.structuredContent.diff.files.filter((f: { path: string }) => f.path.startsWith(".duo-project/"));
     expect(truth.every((f: { provenance?: string }) => f.provenance === "adoption-bootstrap")).toBe(true);
   });
 });
+describe("H-71 full decision proposals through MCP: more expressive, no authority until a human confirms (T35.1)", () => {
+  const p = existingProject(temps);
+  let s: McpSession;
+  const human = { kind: "human" as const, name: "Ada Lovelace" };
+  const decisionFiles = () => fs.readdirSync(path.join(p.root, ".duo-project", "decisions")).filter((f) => f.endsWith(".yaml")).sort();
+  const proposalFiles = () => { const d = path.join(p.root, ".duo-project", "decisions", "proposals"); return fs.existsSync(d) ? fs.readdirSync(d).sort() : []; };
+  const readD = (id: string) => fs.readFileSync(path.join(p.root, ".duo-project", "decisions", `${id}.yaml`), "utf8");
+  beforeAll(async () => {
+    const init = duoctl(p.root, ["init", "--non-interactive", "--answers", "-", "--json"], JSON.stringify([{ question: "project_goal", value: "Keep recurring chores fair." }]));
+    expect(init.code).toBe(0);
+    s = await open(p.root);
+  });
+
+  it("A-O: old and full proposals, validation with no write, unchanged verdict and Decisions, and no agent path to authority", async () => {
+    const review = async () => {
+      const r = (await s.call("duo_review_changes", {})).structuredContent;
+      return { status: r.status, verdict: r.verdict, claims: (r.claims ?? []).map((c: { id: string; alignment: string }) => `${c.id}:${c.alignment}`) };
+    };
+    const before = await review();
+    expect(before.status).toBe("ready");
+
+    // A: an old-style request still works.
+    const a = await s.call("duo_propose_decision", { title: "Weekday rotation", question: "rotation_days", answer: "weekdays only", agent: "codex" });
+    expect(a.isError).toBeFalsy();
+    expect(a.structuredContent).toMatchObject({ format: "duo.proposal/1", proposalId: "P-001", confirmed: false });
+    // B: forbids + enforcement block; only a proposal file appears.
+    const b = await s.call("duo_propose_decision", {
+      title: "No direct clock access", question: "clock_access", answer: "Scheduler code takes time from an injected clock",
+      governs: { paths: ["src/**"] }, forbids: { symbols: ["*SystemClock*"], paths: ["src/legacy/**"] }, enforcement: "block", agent: "codex",
+    });
+    expect(b.isError).toBeFalsy();
+    expect(b.structuredContent.proposalId).toBe("P-002");
+    expect(decisionFiles()).toEqual([]);
+    const pFile = fs.readFileSync(path.join(p.root, b.structuredContent.path), "utf8");
+    expect(pFile).toContain("enforcement: block");
+    expect(pFile).toContain("proposed_by_kind: agent");
+    // J: proposals change no verdict. A proposal file makes the index stale (as in 0.2.1); after the human's index the result is the same.
+    expect(duoctl(p.root, ["index", "--json"]).code).toBe(0);
+    expect(await review()).toEqual(before);
+
+    // C/K: a supersede proposal leaves the target byte-identical.
+    expect((await createDecisionService({ root: p.root }).confirm(human, "P-001")).value?.decisionId).toBe("D-001");
+    const d001 = readD("D-001");
+    const c = await s.call("duo_propose_decision", { title: "Every day rotation", question: "rotation_days", answer: "every day", supersedes: "D-001", agent: "codex" });
+    expect(c.isError).toBeFalsy();
+    expect(c.structuredContent.proposalId).toBe("P-003");
+    expect(readD("D-001")).toBe(d001);
+    expect(decisionFiles()).toEqual(["D-001.yaml"]);
+
+    // D-H: invalid input or a missing target writes nothing.
+    const listing = proposalFiles();
+    const invalid: Record<string, unknown>[] = [
+      { forbids: { paths: ["../outside/**"] } }, { forbids: {} }, { forbids: { paths: [] } }, { enforcement: "error" },
+      { supersedes: "P-003" }, { supersedes: "AUTH-1" }, { supersedes: "D-099" }, { kind: "constraint" }, { evidence: [] },
+      { forbids: { symbols: ["src/scheduler.ts#Scheduler"] } }, { forbids: { symbols: ["src/Scheduler"] } },
+    ];
+    for (const extra of invalid) {
+      const r = await s.call("duo_propose_decision", { title: "x", question: "q_invalid", answer: "a", ...extra });
+      expect(r.isError, JSON.stringify(extra)).toBe(true);
+    }
+    expect(proposalFiles()).toEqual(listing);
+    expect(readD("D-001")).toBe(d001);
+    // T35.2: the refusal tells the agent what to send instead.
+    const ref = await s.call("duo_propose_decision", { title: "x", question: "q_ref", answer: "a", forbids: { symbols: ["src/scheduler.ts#Scheduler"] } });
+    expect(JSON.stringify(ref.content)).toContain("qualified names only");
+    expect(JSON.stringify(ref.content)).toContain("*LegacyDb*");
+    expect(proposalFiles()).toEqual(listing);
+    expect((await s.call("duo_propose_decision", { title: "No scheduler rewrite", question: "q_ok", answer: "a", forbids: { symbols: ["*Scheduler*"] }, enforcement: "warn" })).isError).toBeFalsy();
+    const { tools: listed } = await s.client.listTools();
+    expect(JSON.stringify(listed.find((t) => t.name === "duo_propose_decision")?.inputSchema)).toContain("qualified names of changed symbols");
+    // T37 (H-72): imported_paths through the same tool; its exact semantics are in the agent-facing schema.
+    const schemaText = JSON.stringify(listed.find((t) => t.name === "duo_propose_decision")?.inputSchema);
+    expect(schemaText).toContain("Matches changed import/module-reference statements");
+    expect(schemaText).toContain("It does not prove the import relation is newly introduced");
+    const beforeBad = proposalFiles();
+    expect((await s.call("duo_propose_decision", { title: "x", question: "q_bad_import", answer: "a", forbids: { imported_paths: ["../outside/**"] } })).isError).toBe(true);
+    expect(proposalFiles()).toEqual(beforeBad);
+    const imp = await s.call("duo_propose_decision", { title: "No legacy imports", question: "q_imports", answer: "a", forbids: { imported_paths: ["src/legacy/**"] }, enforcement: "block" });
+    expect(imp.isError).toBeFalsy();
+    expect(fs.readFileSync(path.join(p.root, imp.structuredContent.path), "utf8")).toContain("imported_paths:");
+
+    // I: once D-001 is superseded by a human confirm, a proposal to supersede it again writes nothing.
+    expect((await createDecisionService({ root: p.root }).confirm(human, "P-003")).value).toMatchObject({ decisionId: "D-002", supersedes: "D-001" });
+    const afterSupersede = proposalFiles();
+    const again = await s.call("duo_propose_decision", { title: "Weekend rotation", question: "rotation_days", answer: "weekends", supersedes: "D-001" });
+    expect(again.isError).toBe(true);
+    expect(proposalFiles()).toEqual(afterSupersede);
+
+    // L/M/N/O: nine tools, none confirms, rejects or writes a Decision; P-002 is still only a pending proposal.
+    const { tools } = await s.client.listTools();
+    expect(tools).toHaveLength(9);
+    expect(tools.map((t) => t.name).filter((n) => /confirm|reject|write|delete|record|index/u.test(n))).toEqual([]);
+    expect((await s.call("duo_get_status")).structuredContent.pendingDecisions.map((d: { id: string }) => d.id)).toEqual(["P-002", "P-004", "P-005"]);
+    expect((await s.call("duo_get_decision", { id: "P-002" })).structuredContent.status).toBe("not-found");
+  });
+});
+
+describe("H-73 provenance wording: an edited existing import line is not called new (T38, C240)", () => {
+  it("F: machine provenance stays introduced; CLI and MCP text say not-in-adoption-baseline; verdict and payload unchanged", async () => {
+    const p = existingProject(temps);
+    p.write("src/db/legacy-db.ts", "export type LegacyRow = string;\n\nexport class LegacyDb {\n  run(sql: string): LegacyRow {\n    return sql;\n  }\n}\n");
+    p.write("src/services/legacy-report.ts", "import { LegacyDb } from \"../db/legacy-db.js\";\n\nexport function legacyReport(): string {\n  return new LegacyDb().run(\"select 1\");\n}\n");
+    p.git("add", "-A");
+    p.git("commit", "-qm", "legacy report");
+    const init = duoctl(p.root, ["init", "--non-interactive", "--answers", "-", "--json"], JSON.stringify([{ question: "project_goal", value: "Keep recurring chores fair." }]));
+    expect(init.code).toBe(0);
+    p.git("add", "-A");
+    p.git("commit", "-qm", "duo init");
+    const s = await open(p.root);
+    const prop = await s.call("duo_propose_decision", { title: "No legacy-db imports", question: "q_legacy_db", answer: "Use DbClient", forbids: { imported_paths: ["src/db/legacy-db.ts"] }, enforcement: "block" });
+    expect(prop.isError).toBeFalsy();
+    expect((await createDecisionService({ root: p.root }).confirm({ kind: "human", name: "Ada Lovelace" }, String(prop.structuredContent.proposalId))).value?.decisionId).toEqual(expect.any(String));
+    p.git("add", "-A");
+    p.git("commit", "-qm", "confirm decision");
+    // The import existed before adoption; this change only edits the binding list of that line.
+    p.edit("src/services/legacy-report.ts", "import { LegacyDb } from", "import { LegacyDb, type LegacyRow } from");
+    expect(duoctl(p.root, ["index"]).code).toBe(0);
+
+    const json = duoctl(p.root, ["review", "--json"]).json().result;
+    const claims = json.claims.filter((c: { rule: string }) => c.rule === "decision-forbids-import");
+    expect(json.verdict).toBe("BLOCK");
+    expect(claims).toHaveLength(1);
+    expect(claims[0]).toMatchObject({ alignment: "CONFLICT", reason: "forbidden-import", provenance: "introduced", blockEligible: true });
+    expect(claims[0].observed).toContain("forbidden import on a changed line");
+    const mcp = await s.call("duo_review_changes", {});
+    expect(mcp.structuredContent).toEqual(json);
+
+    const human = duoctl(p.root, ["review"]).stdout;
+    const line = human.split("\n").find((l) => l.includes("decision-forbids-import")) ?? "";
+    expect(line).toContain("forbidden-import");
+    expect(line).toContain("[blocking, not-in-adoption-baseline]");
+    const ko = duoctl(p.root, ["review", "--locale", "ko"]).stdout;
+    expect(ko).toContain("[blocking, 채택 기준선에 없음]");
+    const summary = String(mcp.content[0]?.text);
+    expect(summary).toContain("(not-in-adoption-baseline) [blocking; current authority]");
+    for (const out of [human, ko, summary]) {
+      expect(out).not.toMatch(/introduced/u);
+      expect(out).not.toMatch(/new import|newly introduced import|introduced relation/iu);
+    }
+  });
+});
+

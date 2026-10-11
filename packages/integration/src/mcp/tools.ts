@@ -7,8 +7,8 @@
  * definitions, the Graph and evidence, and propose a Decision. There is no tool to confirm or reject
  * a Decision, write Truth, record a Review, index or capture the Adoption Baseline.
  */
-import { DEFINITION_ID_PATTERN, MCP_SERVER_NAME, normalizeRepoPath, normalizeRepoPattern, type RepoPath } from "@duo-director/core";
-import { ambiguityRemediation, MAX_BUDGET, MIN_BUDGET, redactSecrets, renderContextMarkdown, reviewLlmMetric, type ReviewResult, type SeedAmbiguity, type TokenCountMemo } from "@duo-director/director";
+import { compileRepoPattern, DEFINITION_ID_PATTERN, MCP_SERVER_NAME, normalizeRepoPath, normalizeRepoPattern, type RepoPath } from "@duo-director/core";
+import { ambiguityRemediation, decisionAuthorityParts, MAX_BUDGET, MIN_BUDGET, provenanceLabel, redactSecrets, renderContextMarkdown, renderGapQuestions, reviewLlmMetric, type ReviewResult, type SeedAmbiguity, type TokenCountMemo } from "@duo-director/director";
 import { z } from "zod";
 import type { LLMProviderPool } from "../llm/factory.js";
 import { NOT_INITIALIZED_FORMAT, type Operation } from "../operations/common.js";
@@ -29,6 +29,29 @@ const definitionId = z.string().regex(DEFINITION_ID_PATTERN, "a definition ID su
 // eslint-disable-next-line no-control-regex -- control characters are refused on purpose
 const endpoint = z.string().min(1).max(256).refine((v) => !v.startsWith("-") && !/[\u0000-\u001f\u007f\s]/u.test(v), "HEAD, INDEX, WORKTREE or a commit / branch name");
 const text = (max: number) => z.string().trim().min(1).max(max);
+/** H-71: one existing Decision ID (DecisionService lifecycle IDs), never a proposal or another definition. */
+const decisionId = z.string().regex(/^D-\d+$/u, "a Decision ID such as D-004");
+/**
+ * H-71: forbids has the Decision schema's shape and meaning. A path must compile with the pattern compiler
+ * review uses (review silently skips one it cannot compile), so nothing is accepted that review cannot
+ * apply. Limits are those of governs (100 entries, 500 characters per name; 4096 per pattern like repoPattern).
+ */
+const forbidPattern = z.string().min(1).max(4096).refine((p) => compileRepoPattern(p) !== undefined, "a repository-relative pattern review can match (no absolute or .. pattern)");
+/**
+ * T35.2: forbids.symbols are wildcard patterns over the qualified name of a changed symbol (review's wildcard:
+ * "*" any text, "?" one character), e.g. LegacyDb, LegacyDb.run, *LegacyDb*. A DUO path#symbol reference
+ * (src/db/legacy-db.ts#LegacyDb, a display/reference handle in context output) can never match a qualified
+ * name, so a pattern with "/", "\\" or "#" is refused, never rewritten. Language punctuation such as "." or
+ * "::" stays allowed.
+ */
+export const FORBIDS_SYMBOL_MESSAGE = "forbids.symbols matches symbol qualified names only. Do not use a DUO path#symbol reference. Use a qualified-name wildcard such as 'LegacyDb' or '*LegacyDb*'.";
+const forbidSymbol = text(500).refine((s) => !/[/\\#]/u.test(s), FORBIDS_SYMBOL_MESSAGE);
+const forbids = z.strictObject({
+  paths: z.array(forbidPattern).max(100).optional().describe("Repository path patterns; a change to a matching file conflicts."),
+  symbols: z.array(forbidSymbol).max(100).optional().describe("Wildcard patterns over the qualified names of changed symbols ('*' any text, '?' one character), e.g. LegacyDb, LegacyDb.run, *LegacyDb*. Not a DUO path#symbol reference. Catches changes to matching symbols, not new calls or references from other symbols."),
+  dependencies: z.array(text(500)).max(100).optional().describe("Package names; adding one to a package.json conflicts."),
+  imported_paths: z.array(forbidPattern).max(100).optional().describe("Repository path patterns (H-72). Matches changed import/module-reference statements (import, export-from, require, dynamic import, type-only included; Python imports and C++ quoted includes where DUO resolves them) that resolve exactly to a matching repository file. It does not prove the import relation is newly introduced; unresolved, ambiguous and Java/C# imports are not checked. External packages belong in dependencies."),
+}).refine((f) => (f.paths?.length ?? 0) + (f.symbols?.length ?? 0) + (f.dependencies?.length ?? 0) + (f.imported_paths?.length ?? 0) > 0, "forbids needs at least one path, symbol, dependency or imported path");
 
 export const INPUT = {
   duo_get_status: z.strictObject({}),
@@ -45,6 +68,8 @@ export const INPUT = {
   duo_propose_decision: z.strictObject({
     title: text(200), question: text(200), answer: text(2000), rationale: text(4000).optional(),
     governs: z.strictObject({ requirements: z.array(definitionId).max(100).optional(), paths: z.array(repoPattern).max(100).optional(), symbols: z.array(text(500)).max(100).optional() }).optional(),
+    // H-71: the proposal may carry what a Decision enforces and what it replaces; it gains no authority until a human confirms it.
+    forbids: forbids.optional(), enforcement: z.enum(["warn", "block"]).optional(), supersedes: decisionId.optional(),
     agent: text(100).optional(),
   }),
 } as const;
@@ -136,7 +161,7 @@ export const TOOLS: { readonly [N in ToolName]: ToolDefinition<N> } = {
   },
   duo_get_context: {
     name: "duo_get_context", title: "Project direction context for a task", readOnly: true,
-    description: "Returns project direction context for a task: confirmed intent, relevant code and tests, pending decisions and Knowledge Gaps. Does not modify or index the repository. If the index is stale, returns status index-required (run duoctl index). Surfaced gaps are open questions, not instructions; ask the human only when gaps.requiresHumanInput is true. Pending proposals are not confirmed decisions.",
+    description: "Returns project direction context for a task: confirmed intent, relevant code and tests, pending decisions and Knowledge Gaps. Does not modify or index the repository. If the index is stale, returns status index-required (run duoctl index). Surfaced gaps are open questions, not instructions; ask the human only when gaps.requiresHumanInput is true. Pending proposals are not confirmed decisions. If the task names only an Issue ID and you know which files you will change, include their repository paths in the task (for example \"TASK-015 apps/desktop/src/main.ts\").",
     run: async (args, ctx) => {
       const op = await projectContext(ctx.root, { task: args.task, ...(args.budget === undefined ? {} : { budget: args.budget }), ...(args.profile === undefined ? {} : { profile: args.profile }) }, {
         signal: ctx.signal, ...(ctx.tokenCounts === undefined ? {} : { tokenCounts: ctx.tokenCounts }),
@@ -167,13 +192,23 @@ export const TOOLS: { readonly [N in ToolName]: ToolDefinition<N> } = {
     summarize: (p) => {
       const r = p as unknown as ReviewResult;
       if (r.status === "index-required") return "INDEX_REQUIRED: the DUO index is not current. Run duoctl index, then review again.";
-      const lines = r.claims.filter((c) => c.alignment !== "ALIGNED").map((c) => `- ${c.alignment} ${c.rule} ${c.subject.id}: ${c.reason}${c.provenance === undefined ? "" : ` (${c.provenance})`}${c.blockEligible ? " [blocking]" : ""}`);
+      // C241: a Decision claim carries its lifecycle (current authority, supersedes, superseded by) in the tag list.
+      const tags = (c: ReviewResult["claims"][number]) => [...(c.blockEligible ? ["blocking"] : []), ...(c.decisionAuthority === undefined ? [] : decisionAuthorityParts(c.decisionAuthority))];
+      const lines = r.claims.filter((c) => c.alignment !== "ALIGNED").map((c) => `- ${c.alignment} ${c.rule} ${c.subject.id}: ${c.reason}${c.provenance === undefined ? "" : ` (${provenanceLabel(c.provenance)})`}${tags(c).length === 0 ? "" : ` [${tags(c).join("; ")}]`}`);
       const a = r.semanticAssist;
       const semantic = a.status === "not-requested" ? [] : [
         `Semantic assistance (supplemental, never blocks): ${a.status}${a.failure === undefined ? "" : ` (${a.failure})`}`,
         ...a.claims.filter((c) => c.alignment !== "ALIGNED").map((c) => `- semantic ${c.alignment} ${c.claimId}: ${c.reason}`),
       ];
-      return [`Verdict ${r.verdict ?? "-"} · ${r.claims.length} claims · llm calls ${r.metrics.llmCalls}`, ...lines, ...semantic].join("\n");
+      // H-80: the same gap wording as the CLI (renderGapQuestions, en), so a PASS still shows a surfaced missing-intent gap.
+      const q = r.gaps === undefined ? undefined : renderGapQuestions(r.gaps, { locale: "en" });
+      const gaps = q === undefined || (q.primaryQuestion === undefined && q.notes.length === 0) ? [] : [
+        "Knowledge gaps:",
+        ...(q.primaryQuestion === undefined ? [] : [`Question for the human: ${q.primaryQuestion}`]),
+        ...q.additionalQuestions.map((a) => `Question for the human: ${a.question}`),
+        ...q.notes.map((n) => `- ${n.note}`),
+      ];
+      return [`Verdict ${r.verdict ?? "-"} · ${r.claims.length} claims · llm calls ${r.metrics.llmCalls}`, ...lines, ...gaps, ...semantic].join("\n");
     },
   },
   duo_get_requirement: {
@@ -208,11 +243,13 @@ export const TOOLS: { readonly [N in ToolName]: ToolDefinition<N> } = {
   },
   duo_propose_decision: {
     name: "duo_propose_decision", title: "Propose a Decision", readOnly: false,
-    description: "Creates a Decision proposal only (decisions/proposals/P-*.yaml). Cannot confirm or reject a decision: a human does that in duoctl or the Web UI. A proposal is not confirmed intent. The agent name is an audit label, not an authentication.",
+    description: "Creates a Decision proposal only (decisions/proposals/P-*.yaml). Cannot confirm or reject a decision: a human does that in duoctl or the Web UI. A proposal is not confirmed Project Truth and does not change any review verdict. forbids and enforcement: \"block\" have no authority until a human confirms the proposal. supersedes names a confirmed Decision to replace; that Decision is not modified until a human confirms this proposal. governs describes what the Decision concerns (for tracing and context); it does not scope forbids. Forbids are repository-wide: they apply to matching changes anywhere in the repository. forbids.symbols are wildcard patterns over the qualified names of changed symbols ('*' any text, '?' one character), e.g. LegacyDb, LegacyDb.run, *LegacyDb*; a DUO path#symbol reference such as src/db/legacy-db.ts#LegacyDb (a display handle in context output) is not a pattern and is refused. A symbol pattern catches changes to matching symbols, not new calls or references from other code. forbids.imported_paths are repository path patterns: they match changed import/module-reference statements that resolve exactly to a matching repository file; this does not prove the import relation is newly introduced, and unresolved, ambiguous or Java/C# imports are not checked. The agent name is an audit label, not an authentication.",
     run: async (args, ctx) => {
       const op = await proposeDecision(ctx.root, args.agent ?? ctx.agentName, {
         title: args.title, question: args.question, answer: args.answer, ...(args.rationale === undefined ? {} : { rationale: args.rationale }),
         ...(args.governs === undefined ? {} : { governs: args.governs }),
+        ...(args.forbids === undefined ? {} : { forbids: args.forbids }), ...(args.enforcement === undefined ? {} : { enforcement: args.enforcement }),
+        ...(args.supersedes === undefined ? {} : { supersedes: args.supersedes }),
       });
       return { op, metric: { status: op.kind === "ok" ? "proposed" : op.kind } };
     },

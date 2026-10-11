@@ -12,7 +12,7 @@ import type { ContextPacket } from "../context/types.js";
 import { repositoryEvidence, truthEvidence } from "../evidence/sources.js";
 import type { EvidenceStore } from "../evidence/store.js";
 import { blockEligible } from "../llm/contract/evidence.js";
-import type { Alignment, ChangedFile, DiffSeed, ReviewClaim, ReviewRule, TestRunEvidence } from "./types.js";
+import type { Alignment, ChangedFile, DecisionAuthority, DiffSeed, ReviewClaim, ReviewRule, TestRunEvidence } from "./types.js";
 
 export interface RuleContext {
   readonly root: string;
@@ -38,6 +38,10 @@ export interface RuleContext {
   readonly baselineKeys?: ReadonlySet<string>;
   /** Languages that had structural symbols when the baseline was captured (T18.0). */
   readonly baselineStructuralLanguages?: ReadonlySet<string>;
+  /** Rules the baseline recorded as evaluated (H-72); undefined for a baseline captured before T37 or without one. */
+  readonly baselineEvaluatedRules?: ReadonlySet<string>;
+  /** When the baseline was recorded (UTC ISO 8601). */
+  readonly baselineRecordedAt?: string;
 }
 
 export interface ClaimInput {
@@ -57,7 +61,7 @@ export interface ClaimInput {
    * Baseline rules: the stable violation key and whether this diff changed the offending or governing
    * entity. language: for a symbol violation, the language of the symbol's file (T18.0).
    */
-  readonly violation?: { readonly key: string; readonly touched: boolean; readonly language?: string };
+  readonly violation?: { readonly key: string; readonly touched: boolean; readonly language?: string; readonly unverifiable?: boolean };
 }
 
 const BASIS_ORDER: readonly EvidenceBasis[] = ["project-truth", "repository", "git", "test", "llm"];
@@ -75,7 +79,8 @@ export function makeClaim(ctx: RuleContext, input: ClaimInput): ReviewClaim | un
   // T14.1: a violation that existed at adoption never blocks; touched by this diff it still warns, untouched it is history.
   const v = input.violation;
   // T18.0: the baseline could not record a symbol in a language it had no structural analyzer for.
-  const unverifiable = v?.language !== undefined && ctx.baselineStructuralLanguages !== undefined && !ctx.baselineStructuralLanguages.has(v.language);
+  // H-72: a rule can also say the baseline could not have recorded this violation (rule not evaluated at capture).
+  const unverifiable = v?.unverifiable === true || (v?.language !== undefined && ctx.baselineStructuralLanguages !== undefined && !ctx.baselineStructuralLanguages.has(v.language));
   const provenance = v === undefined || ctx.baselineKeys === undefined || input.alignment === "ALIGNED" ? undefined
     : !ctx.baselineKeys.has(v.key) ? (unverifiable ? "unverified-at-adoption" as const : "introduced" as const)
       : v.touched ? "pre-existing-touched" as const : "pre-existing" as const;
@@ -118,6 +123,20 @@ export function seedEvidence(ctx: RuleContext, seed: DiffSeed): (string | undefi
 
 export function isActive(d: { readonly state: string; readonly supersededBy: string | null }): boolean {
   return d.state === "confirmed" && d.supersededBy === null;
+}
+
+/**
+ * C241 (T49): each claim about a Decision gets that Decision's lifecycle facts from the same complete Truth the rules
+ * read (exact ID match, isActive for active). Other claims are returned as they are. Nothing else in a claim changes.
+ */
+export function withDecisionAuthority(truth: Pick<ProjectTruth, "decisions">, claims: readonly ReviewClaim[]): ReviewClaim[] {
+  const decisions = new Map(truth.decisions.map((d) => [d.id, d] as const));
+  return claims.map((c) => {
+    const d = c.subject.kind === "decision" ? decisions.get(c.subject.id) : undefined;
+    if (d === undefined) return c;
+    const decisionAuthority: DecisionAuthority = { state: d.state, active: isActive(d), supersedes: d.supersedes, supersededBy: d.supersededBy };
+    return { ...c, decisionAuthority };
+  });
 }
 
 export function requirementRef(id: string) {

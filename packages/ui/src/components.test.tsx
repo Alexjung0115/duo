@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Level, Provenance, Verdict } from "./components.js";
 import { route } from "./app.js";
 import { CoverageTable } from "./pages/coverage.js";
+import { Candidate } from "./pages/decisions.js";
 import { DecisionLabel } from "./pages/direction.js";
 import { llmText } from "./pages/overview.js";
 import { PASS_MEANING, ReviewView } from "./pages/review.js";
@@ -23,6 +24,9 @@ describe("UI components (T18.1)", () => {
     expect(out[1]).not.toContain("block");
     expect(out[2]).toContain("tone-warn");
     expect(out[3]).toContain("tone-warn");
+    // H-73 (C240): adoption-baseline wording, never "introduced".
+    expect(out.slice(0, 4).map((h) => /title="[^"]*">([^<]*)</u.exec(h)?.[1])).toEqual(["not-in-adoption-baseline", "in-adoption-baseline", "in-adoption-baseline, touched", "baseline-unverified"]);
+    expect(out.join("")).not.toMatch(/introduced/u);
   });
 
   it("L0 is file-level analysis, not an error", () => {
@@ -62,11 +66,28 @@ describe("UI components (T18.1)", () => {
     expect(out).not.toMatch(/100% aligned|All tests pass|Bug free/u);
     expect(out).toContain("Semantic assistance (supplemental, never blocks)");
     expect(out.indexOf("Semantic assistance")).toBeGreaterThan(out.indexOf("Claims"));
-    expect(out).toContain("pre-existing · touched");
+    expect(out).toContain("in-adoption-baseline, touched");
     expect(out).toContain("duoctl review --record");
     const stale = html(<ReviewView r={{ ...base, status: "index-required", freshness: { status: "stale" } }} />);
     expect(stale).toContain("index-required");
     expect(stale).toContain("duoctl index");
+  });
+
+  it("C241: a live Review shows a Decision claim's lifecycle under its subject; other rows are unchanged", () => {
+    const claim = { id: "claim-1", rule: "decision-forbids", subject: { kind: "decision", id: "D-002" }, alignment: "CONFLICT", reason: "forbidden-symbol", evidenceIds: [], basis: [], blockEligible: true, drift: false };
+    const requirement = { id: "claim-2", rule: "test-coverage", subject: { kind: "requirement", id: "REQ-001" }, alignment: "PARTIAL", reason: "no-related-test", evidenceIds: [], basis: [], blockEligible: false, drift: false };
+    const r: ReviewResult = {
+      status: "ready", verdict: "BLOCK", baseline: { status: "present" }, diff: { identity: "sha256:d", from: "HEAD", to: "WORKTREE", files: [] },
+      claims: [{ ...claim, decisionAuthority: { state: "confirmed", active: true, supersedes: "D-001", supersededBy: null } }, requirement],
+      evidence: [], limitations: [], metrics: { llmCalls: 0 }, semanticAssist: { status: "not-requested", calls: 0, cacheHits: 0, claims: [], skippedChecks: [] },
+    };
+    const out = html(<ReviewView r={r} />);
+    expect(out).toContain("<code>D-002</code><div class=\"muted small\">current authority · supersedes D-001</div>");
+    expect(out).toContain("<code>REQ-001</code></td>");
+    const superseded = html(<ReviewView r={{ ...r, claims: [{ ...claim, subject: { kind: "decision", id: "D-001" }, decisionAuthority: { state: "superseded", active: false, supersedes: null, supersededBy: "D-002" } }] }} />);
+    expect(superseded).toContain("superseded · superseded by D-002");
+    expect(superseded).not.toContain("current authority");
+    expect(html(<ReviewView r={{ ...r, claims: [claim] }} />)).toContain("<code>D-002</code></td>");
   });
 
   it("T40 N1: a failed review shows the Truth error and no verdict", () => {
@@ -76,6 +97,14 @@ describe("UI components (T18.1)", () => {
     expect(failed).toContain("PROJECT_TRUTH_INVALID");
     expect(failed).toContain(".duo-project/decisions/D-001.yaml");
     expect(failed).not.toMatch(/verdict-(pass|warn|block)|Deterministic review:/u);
+  });
+
+  it("T40 N3: the confirm preview states that forbids are repository-wide", () => {
+    const preview = { sourceId: "P-001", sourceKind: "proposal" as const, expectedDecisionId: "D-001", digest: "sha256:x",
+      candidate: { title: "t", question: "q", answer: "a", governs: { paths: ["src/ui/**"] }, forbids: { imported_paths: ["src/db/legacy-db.ts"] }, enforcement: "block" } };
+    const out = html(<Candidate preview={preview} />);
+    expect(out).toContain("<dt>Forbids scope</dt><dd>repository-wide (governs does not narrow forbids)</dd>");
+    expect(html(<Candidate preview={{ ...preview, candidate: { title: "t", question: "q", answer: "a" } }} />)).not.toContain("Forbids scope");
   });
 
   it("deep links route to their screens", () => {

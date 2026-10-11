@@ -219,13 +219,14 @@ describe("human decisions through DecisionService (T18.1)", () => {
     const b = await service.propose(agent, { title: "Reports in cents", question: "report_unit", answer: "whole cents" });
     const pa = a.value?.proposalId ?? "";
     const pb = b.value?.proposalId ?? "";
-    const proposals = (await get("/api/proposals")).json().data as { proposals: { id: string; status: string }[]; previews: Record<string, { nextDecisionId: string }> };
+    const proposals = (await get("/api/proposals")).json().data as { proposals: { id: string; status: string }[]; previews: Record<string, { nextDecisionId: string; digest: string }> };
+    const digest = proposals.previews[pa]?.digest ?? "";
     expect(proposals.proposals.filter((p) => p.status === "pending").map((p) => p.id).sort()).toEqual([pa, pb].sort());
     expect(proposals.previews[pa]?.nextDecisionId).toMatch(/^D-\d+$/u);
-    expect((await post(`/api/proposals/${pa}/confirm`, { confirmId: "P-wrong" })).json().error?.code).toBe("UI_CONFIRM_ID_MISMATCH");
-    const confirmed = (await post(`/api/proposals/${pa}/confirm`, { confirmId: pa })).json().data as { status: string; result: { decisionId: string; path: string } };
+    expect((await post(`/api/proposals/${pa}/confirm`, { confirmId: "P-wrong", previewDigest: digest })).json().error?.code).toBe("UI_CONFIRM_ID_MISMATCH");
+    const confirmed = (await post(`/api/proposals/${pa}/confirm`, { confirmId: pa, previewDigest: digest })).json().data as { status: string; result: { decisionId: string; path: string } };
     expect(confirmed.status).toBe("confirmed");
-    const second = (await post(`/api/proposals/${pa}/confirm`, { confirmId: pa })).json();
+    const second = (await post(`/api/proposals/${pa}/confirm`, { confirmId: pa, previewDigest: digest })).json();
     expect(second.ok).toBe(true); // a Domain answer, not an HTTP error
     expect(second.data).toMatchObject({ status: "failed", diagnostics: [expect.objectContaining({ code: "PROPOSAL_NOT_PENDING" })] });
     expect((await post(`/api/proposals/${pb}/reject`, { reason: "not now" })).json().data).toMatchObject({ status: "rejected" });
@@ -239,4 +240,49 @@ describe("human decisions through DecisionService (T18.1)", () => {
     const metrics = fs.readFileSync(path.join(root, ".duo-project", "runtime", "metrics.jsonl"), "utf8");
     expect(metrics).toContain('"surface":"ui","command":"decision"');
   });
+  it("informed confirm (T34.2): the preview carries the full candidate and a digest; a confirm bound to an outdated preview writes nothing", async () => {
+    const service = createDecisionService({ root });
+    const human = { kind: "human" as const, name: "Dev" };
+    const id = (await service.propose(human, { title: "No float money", question: "money_type", answer: "integers only", forbids: { symbols: ["*FloatAmount*"] }, enforcement: "block" })).value?.proposalId ?? "";
+    type P = { candidate: Record<string, unknown>; digest: string; expectedDecisionId: string; action: string };
+    const before = ((await get("/api/proposals")).json().data as { previews: Record<string, P> }).previews[id];
+    expect(before).toMatchObject({ action: "create", candidate: { forbids: { symbols: ["*FloatAmount*"] }, enforcement: "block", answer: "integers only" } });
+    expect(before?.digest).toMatch(/^sha256:/u);
+    edit(`.duo-project/decisions/proposals/${id}.yaml`, "enforcement: block", "enforcement: warn");
+    const stale = (await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: before?.digest })).json();
+    expect(stale.data).toMatchObject({ status: "failed", diagnostics: [expect.objectContaining({ code: "DECISION_CONFIRM_PREVIEW_CHANGED" })] });
+    const after = ((await get("/api/proposals")).json().data as { previews: Record<string, P> }).previews[id];
+    expect(after?.candidate.enforcement).toBe("warn");
+    const ok = (await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: after?.digest })).json().data as { status: string; result: { decisionId: string } };
+    expect(ok.status).toBe("confirmed");
+    expect((await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: "x".repeat(101) })).status).toBe(400);
+  });
+
+  it("T34.3 a UI confirm must carry the preview digest: missing → 400 and nothing written; wrong or outdated → nothing written; current → confirmed", async () => {
+    const service = createDecisionService({ root });
+    const id = (await service.propose({ kind: "human", name: "Dev" }, { title: "Reports in UTC", question: "report_timezone", answer: "UTC" })).value?.proposalId ?? "";
+    const decisionsDir = path.join(root, ".duo-project", "decisions");
+    const files = () => fs.readdirSync(decisionsDir).filter((f) => f.endsWith(".yaml")).sort();
+    const proposalFile = path.join(decisionsDir, "proposals", `${id}.yaml`);
+    const preview = () => ((get("/api/proposals")).then((r) => (r.json().data as { previews: Record<string, { digest: string; sourceKind: string }> }).previews[id]));
+    const before = files();
+    const missing = await post(`/api/proposals/${id}/confirm`, { confirmId: id });
+    expect(missing.status).toBe(400);
+    expect(missing.json().error?.code).toBe("UI_REQUEST_INVALID");
+    expect((await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: "" })).status).toBe(400);
+    const wrong = (await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: `sha256:${"0".repeat(64)}` })).json();
+    expect(wrong.data).toMatchObject({ status: "failed", diagnostics: [expect.objectContaining({ code: "DECISION_CONFIRM_PREVIEW_CHANGED" })] });
+    const old = await preview();
+    expect(old?.sourceKind).toBe("proposal");
+    fs.writeFileSync(proposalFile, fs.readFileSync(proposalFile, "utf8").replace("answer: UTC", "answer: local time"));
+    const outdated = (await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: old?.digest })).json();
+    expect(outdated.data).toMatchObject({ status: "failed", diagnostics: [expect.objectContaining({ code: "DECISION_CONFIRM_PREVIEW_CHANGED" })] });
+    expect(files()).toEqual(before);
+    expect(fs.existsSync(proposalFile)).toBe(true);
+    const current = await preview();
+    const ok = (await post(`/api/proposals/${id}/confirm`, { confirmId: id, previewDigest: current?.digest })).json().data as { status: string; result: { decisionId: string; path: string } };
+    expect(ok.status).toBe("confirmed");
+    expect(fs.readFileSync(path.join(root, ok.result.path), "utf8")).toContain("answer: local time");
+  });
 });
+

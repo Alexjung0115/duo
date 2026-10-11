@@ -53,8 +53,13 @@ export interface Direction {
   readonly decisions: readonly DecisionItem[];
   readonly proposals: readonly ProposalItem[];
 }
+/** DecisionService.previewConfirm as the server returns it (T18.1, T34.2). candidate: the file's content fields; an absent key is not set. */
 export interface Preview {
-  readonly proposalId?: string; readonly nextDecisionId?: string;
+  readonly proposalId?: string; readonly nextDecisionId?: string; readonly expectedDecisionId?: string;
+  readonly sourceId?: string; readonly sourceKind?: "proposal" | "decision"; readonly sourcePath?: string; readonly action?: "create" | "confirm-in-place" | "add-lock";
+  readonly candidate?: Readonly<Record<string, unknown>>;
+  readonly proposedBy?: string; readonly proposedByKind?: string;
+  readonly digest?: string;
   readonly stale?: { readonly truthChanged: boolean; readonly changedRefs: readonly string[] };
   readonly supersedes?: { readonly id: string; readonly title: string; readonly state: string; readonly path: string };
   readonly error?: readonly string[];
@@ -75,7 +80,10 @@ export interface Claim {
   readonly id: string; readonly rule: string; readonly subject: { readonly kind: string; readonly id: string }; readonly alignment: string;
   readonly reason: string; readonly expected?: string; readonly observed?: string; readonly evidenceIds: readonly string[]; readonly basis: readonly string[];
   readonly blockEligible: boolean; readonly drift: boolean; readonly provenance?: string;
+  /** C241: present for a live Review claim about a Decision (never in a Review Record). */
+  readonly decisionAuthority?: DecisionAuthority;
 }
+export interface DecisionAuthority { readonly state: string; readonly active: boolean; readonly supersedes: string | null; readonly supersededBy: string | null }
 export interface SemanticAssist {
   readonly status: string; readonly failure?: string; readonly provider?: { readonly id: string; readonly model?: string };
   readonly claims: readonly { readonly claimId: string; readonly alignment: string; readonly reason?: string; readonly evidenceIds: readonly string[] }[];
