@@ -16,6 +16,24 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
+## 0.3.0 (H-81, 2026-10-11 stable release, dist-tag `latest`, `v0.3.0` = `98267fa`)
+
+Stable release on branch `main`: 0.3.0-rc.6의 제품 semantics를 바꾸지 않고 승격한다(H-81). H-81 exact target `98267fac70a64a9fd618397b97a0f7e2d2009099`. `next`를 `main`에 merge(`4475283`)했고 제품 tree는 rc.6(`d0f29a5`)과 같다. C259는 known limitation이다. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.0.md)
+
+- [x] release guard `pnpm release:authorization`(`44a8509`, T60 사고 재발 방지): rc.6 기록(main `2c3952f`)은 통과하고 사고 commit의 기록은 막힘
+- [x] merge `4475283`: 제품 tree(`apps/`·`packages/`)는 `d0f29a5`와 diff 0, 문서 충돌은 양쪽 내용을 합침, main 전용 0.2.2 test `tests/cli/truth-fail-closed.e2e.test.ts` 제거
+- [x] version 0.3.0(`98267fa`), release lock(diff는 version 2줄, 67 packages), release notes, compatibility 0.3.0 절
+- [x] tarball `duo-director-cli-0.3.0.tgz` 24,378,205 B(unpacked 114,186,212 B), 7,468 files, bundled 67, sha1 `f8eab974800263f59da3ae179fbaccda901791c6`, sha256 `a990ce5450414e61a1751ce20e37a8af5bf8c679625e74db7747b3c318b6c76c`, integrity `sha512-6dSHDzjhXyVBn6gpqECkbiZP/hp5IM1AMiFCnIZ2JY1WsKzlh665zdRSrII1p/ee8bWtMyNPiT17XC/AvnkggQ==`, runtime tree `264ab643bb960f509d537f4097c56120b4f368123fe729fd5d1b330d64d09251`. rc.6 tarball 대비 차이는 `package.json` version과 `dist/runtime-tree.json`의 package 이름·lock hash뿐. preflight 재pack과 독립 pack 모두 byte 동일
+- [x] CI 3 OS(run 38111951690) success
+- [x] `pnpm release:preflight` READY(ready·codeReady·externalReady true, blockers 0, releaseChannel stable, branch main = main, upstream origin/main, dry-run tag latest): verify, grammar, benchmark smoke, 배포 E2E, conformance, upgrade, audit, secret·절대경로 0, license 비허용 0, dry-run 7,468 = RC. 첫 실행은 verify 안의 `packages/integration/src/llm/compatible/provider.test.ts` 한 test가 전체 suite 부하에서 5,000 ms timeout으로 실패해 BLOCKED였다(단독 재실행 통과). 코드 변경 없이 다시 실행해 READY
+- [x] upgrade 0.2.2 → 0.3.0(TypeScript·Python·C++·sparse 저장소, Truth 불변), 설치 matrix npm 10/11/12 global과 npm 11 local(runtime tree, package 밖 설치 0, doctor, MCP 9, BLOCK, `--fail-on block` 4, invalid Truth fail-closed), 칸별 rc.3~rc.6 검사(T42, C249/C251, C256, H-79, H-80·C258), 공개 rc.6 대비 review(PASS·ASK·BLOCK·WARN의 JSON·사람 출력·종료 코드·MCP)·Context Packet·gap 출력 동일, packed e2e, T45(TASK-015 → D-004·D-005), T44 PTY(2개 확정, 1개 pending, non-TTY 거부), downgrade 0.3.0 → 0.2.2 fail-closed
+- [x] H-81 기록(main, target `98267fa`)
+- [ ] `pnpm release:authorization` OK
+- [ ] npm publish `@duo-director/cli@0.3.0` `--tag latest --access public`(검증한 tarball 그대로)
+- [ ] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local
+- [ ] annotated tag `v0.3.0` → `98267fa`, GitHub Release "DUO 0.3.0"(draft 아님, prerelease 아님, latest, tarball 첨부)
+- [ ] `pnpm release:verify-published` OK
+
 ## 0.3.0-rc.6 (H-74, 2026-10-11 prerelease, dist-tag `next`, `v0.3.0-rc.6` = `d0f29a5`)
 
 Prerelease on branch `next`: rc.5 이후의 T58(H-80, C239: `missing-intent` gap은 surface 그대로이고 단독으로 WARN이 아님, MCP review text에 Knowledge gap 표시)과 T59(C258: missing-intent 문구 정정)를 담는다. T57은 감사 문서만이다. H-74 exact target `d0f29a51eeb71d74b9388c2436cfa09380310e03`. stable 0.3.0 승격은 하지 않았고 `next`를 `main`에 merge하지 않았다. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/next/docs/release/notes-0.3.0-rc.6.md)
