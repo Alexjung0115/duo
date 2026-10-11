@@ -27,12 +27,12 @@ Stable release on branch `main`: 0.3.0-rc.6의 제품 semantics를 바꾸지 않
 - [x] CI 3 OS(run 38111951690) success
 - [x] `pnpm release:preflight` READY(ready·codeReady·externalReady true, blockers 0, releaseChannel stable, branch main = main, upstream origin/main, dry-run tag latest): verify, grammar, benchmark smoke, 배포 E2E, conformance, upgrade, audit, secret·절대경로 0, license 비허용 0, dry-run 7,468 = RC. 첫 실행은 verify 안의 `packages/integration/src/llm/compatible/provider.test.ts` 한 test가 전체 suite 부하에서 5,000 ms timeout으로 실패해 BLOCKED였다(단독 재실행 통과). 코드 변경 없이 다시 실행해 READY
 - [x] upgrade 0.2.2 → 0.3.0(TypeScript·Python·C++·sparse 저장소, Truth 불변), 설치 matrix npm 10/11/12 global과 npm 11 local(runtime tree, package 밖 설치 0, doctor, MCP 9, BLOCK, `--fail-on block` 4, invalid Truth fail-closed), 칸별 rc.3~rc.6 검사(T42, C249/C251, C256, H-79, H-80·C258), 공개 rc.6 대비 review(PASS·ASK·BLOCK·WARN의 JSON·사람 출력·종료 코드·MCP)·Context Packet·gap 출력 동일, packed e2e, T45(TASK-015 → D-004·D-005), T44 PTY(2개 확정, 1개 pending, non-TTY 거부), downgrade 0.3.0 → 0.2.2 fail-closed
-- [x] H-81 기록(main, target `98267fa`)
-- [ ] `pnpm release:authorization` OK
-- [ ] npm publish `@duo-director/cli@0.3.0` `--tag latest --access public`(검증한 tarball 그대로)
-- [ ] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local
-- [ ] annotated tag `v0.3.0` → `98267fa`, GitHub Release "DUO 0.3.0"(draft 아님, prerelease 아님, latest, tarball 첨부)
-- [ ] `pnpm release:verify-published` OK
+- [x] H-81 기록(main `e3a0d65`, target `98267fa`)
+- [x] `pnpm release:authorization` OK(record HEAD `e3a0d65` = origin/main, H-81, problems 0)
+- [x] npm publish `@duo-director/cli@0.3.0` `--tag latest --access public`(검증한 tarball 그대로, 2FA 승인): registry integrity·shasum·fileCount(7,468)·unpacked size = RC, `latest` = 0.3.0, `next` = 0.3.0-rc.6 그대로
+- [x] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local: `duoctl 0.3.0`, runtime tree(67, mismatch 0, extra 0, package 밖 설치 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed, 칸별 T42·C249/C251·C256·H-79·H-80·C258, 공개 rc.6과 review·Context Packet·gap 출력 동일, T45(TASK-015 → D-004·D-005)
+- [x] annotated tag `v0.3.0` → `98267fa`, GitHub Release "DUO 0.3.0"(draft 아님, prerelease 아님, GitHub latest release = v0.3.0, tarball 첨부)
+- [x] `pnpm release:verify-published` OK(problems 0, channel stable, dist-tags latest 0.3.0·next 0.3.0-rc.6, tag commit = H-81 target)
 
 ## 0.3.0-rc.6 (H-74, 2026-10-11 prerelease, dist-tag `next`, `v0.3.0-rc.6` = `d0f29a5`)
 
