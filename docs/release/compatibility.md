@@ -71,6 +71,23 @@
 | Dependency (security) | upstream High advisory GHSA-6qxp-vccf-f47h 때문에 MCP SDK release group(`@modelcontextprotocol/client`·`server`·`core`)을 2.1.0 → 2.2.0으로 올린다. 다른 bundled package·license·install script는 그대로(67 package). MCP protocol version, tool 9개와 schema, `duo_get_status`, stdio launch probe(install verify, doctor) 동작은 같다 |
 | Downgrade | DUO 0.3이 쓴 저장소(예: `forbids.imported_paths`)를 열 수 있는 가장 낮은 버전은 0.2.2다. 0.2.2는 그 field를 이해하지 않고 review를 거부한다. 0.2.1 이하로 여는 것은 지원하지 않는다(C244) |
 
+## 0.3.0 변경 분류 (T63, H-81)
+
+0.2.2 → 0.3.0. 0.3.0은 검증한 0.3.0-rc.6의 제품 source(`d0f29a5`)를 그대로 승격한다. 아래는 rc.1~rc.6 누적이며 개별 변경은 각 rc notes와 아래 H-80 절에 있다. format major bump는 없다.
+
+| 분류 | 내용 |
+|---|---|
+| Additive Truth | Decision·proposal `forbids.imported_paths`(H-72), Issue `implements.paths`(H-78). `schema_version: 1` 그대로. 새 field가 없는 Decision의 lock digest는 같다 |
+| Additive public | MCP `duo_propose_decision`의 `forbids`·`enforcement`·`supersedes`(H-71, 0.2.x 입력 그대로 허용, tool 9개). review rule 값 `decision-forbids-import`, Decision claim의 `decisionAuthority`(C241). Adoption Baseline 새 capture의 `evaluatedRules`. CLI `duoctl decision review-pending`. diagnostic `DECISION_CONFIRM_PREVIEW_CHANGED`·`DECISION_SESSION_CONFLICT`, context limitation `explicit-seed-truncated`. 모두 같은 `/1`·`/2` |
+| Behavior correction | Context seed 정밀도(명시 seed 보존 H-76, exact path·symbol의 BM25 재사용 제거 C249·C251, `./`·역슬래시·leading-dot·root file 경로 C252·C256·H-79). missing-intent gap 단독은 WARN이 아님(H-80, C239). invalid Truth fail-closed는 0.2.2와 같음 |
+| Regenerated | `CONTEXT_POLICY_VERSION` 2 → 8, Graph relation rules 1 → 2. cache와 index가 한 번 다시 만들어진다(`duoctl index` 1회) |
+| 사람이 읽는 출력 | provenance 표시 용어(H-73), MCP review text의 Knowledge gap, missing-intent 문구(C258). `duo.context/1`의 렌더된 `gaps.surfaced[].note` 값 |
+| Local UI API | proposal confirm에 preview digest가 필요(번들 UI가 보냄) |
+| Review Record | 형식 `duo.review-record/1` 그대로. H-80 때문에 missing-intent가 있는 Review를 새로 기록하면 ID가 달라질 수 있고 기존 Record는 다시 쓰지 않는다 |
+| Unchanged | `duo.review/1`·`duo.gap-assessment/1`·`duo.context-packet/1`·`duo.review-record/1`·`duo.adoption-baseline/2` 형식, project.yaml `schema_version: 1`, CLI 종료 코드, MCP tool 수(9) |
+| Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
+| Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
+
 ## 0.3.0 개발 변경: missing-intent verdict (branch `next`, T58, H-80)
 
 0.3.0-rc.5 뒤 `next`의 변경이며 0.3.0-rc.6에 들어간다. 형식 변경이 아니라 같은 `/1`의 판정 정정이다(C239, C110).
