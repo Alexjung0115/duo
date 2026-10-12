@@ -88,6 +88,20 @@
 | Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
 | Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
 
+## 0.3.1 변경 분류 (T68, H-83)
+
+0.3.0 → 0.3.1. Correctness patch(H-82, C261~C265). 새 기능과 format major bump는 없다. 정상 Project Truth와 정상 입력의 결과는 0.3.0과 같다.
+
+| 분류 | 내용 |
+|---|---|
+| Behavior correction | 이전에 verdict(대개 PASS)가 나던 다음 경우가 이제 verdict 없는 작업 실패다(CLI 1, MCP `isError`, Review Record 없음). (1) Decision authority가 온전하지 않음: 현재 상태의 lock 불일치(범위 밖 commit 포함), lifecycle·supersession 모순, Decision처럼 보이지만 읽히지 않는 Markdown(C261~C263, `PROJECT_TRUTH_INVALID`). (2) `--staged`·`--to <commit>`의 reviewed snapshot이 바뀐 경로나 Project Truth에서 working tree와 다름(C264). (3) 필수 review·task Context 컴파일 실패(C265). 범위 안에서 confirmed Decision이 proposed·rejected가 되면 blocking claim `confirmed-decision-retired` |
+| Additive public | diagnostic `DECISION_INTEGRITY_INVALID`·`DECISION_SOURCE_INVALID`·`REVIEW_SNAPSHOT_MISMATCH`·`REVIEW_ANALYSIS_INCOMPLETE`, claim reason `confirmed-decision-retired`, limitation `reviewed-side-context-from-working-tree`. 모두 같은 `/1` |
+| 사람이 읽는 출력 | status·decision list·doctor·`PROJECT_TRUTH_INVALID` 문구가 읽지 못한 Truth와 모순된 Truth를 함께 설명 |
+| Unchanged | Truth schema(`schema_version: 1`), Decision Lock 형식과 digest 대상 field, `duo.review/1`·`duo.context/1`·`duo.context-packet/1`·`duo.gap-assessment/1`·`duo.review-record/1`·`duo.adoption-baseline/2`, `CONTEXT_POLICY_VERSION` 8, Graph 형식(0.3.0 index가 그대로 current), MCP tool 9개, CLI 종료 코드 표, H-80 |
+| Migration | 없음. Truth·lock·Record를 다시 쓰지 않고 re-init이 필요 없다 |
+| Downgrade | 0.3.0은 같은 Truth를 읽지만 다섯 결함이 돌아온다. 0.3 Truth의 floor는 그대로 0.2.2 |
+| Known limitation | C259(그대로). C264는 정확한 snapshot 분석이 아니라 fail closed. lock으로 보이지 않는 것(범위 밖 삭제, digest 재계산, lock 삭제) |
+
 ## 0.3.0 개발 변경: missing-intent verdict (branch `next`, T58, H-80)
 
 0.3.0-rc.5 뒤 `next`의 변경이며 0.3.0-rc.6에 들어간다. 형식 변경이 아니라 같은 `/1`의 판정 정정이다(C239, C110).
