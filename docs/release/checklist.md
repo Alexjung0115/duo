@@ -28,12 +28,12 @@ Stable correctness patch on branch `main`(H-82, H-83): C261~C265만 고친다. H
 - [x] 설치본(npm 10/11/12 global, npm 11 local)으로 registry 0.3.0과 나란히 C261(잘못된 `superseded_by`, confirmed → rejected·proposed: 0.3.0 PASS·WARN → verdict 없이 1, 범위 안 retire는 `confirmed-decision-retired` BLOCK), C262(enforcement·forbids 변경 commit 뒤: verdict 없이 1, status `truth.errors`, doctor 6), C263(`type: Decision`, type 없음: `DECISION_SOURCE_INVALID`, README·`.yaml.txt`·메모는 그대로 BLOCK), C264(staged code 불일치 `REVIEW_SNAPSHOT_MISMATCH`, staged Truth 불일치 fail closed, 깨끗한 staged와 commit 범위는 BLOCK), C265(파일 5,000개: `REVIEW_ANALYSIS_INCOMPLETE` + `CONTEXT_REQUEST_INVALID`, `--fail-on ask` 1, Record 없음, 파일 1개는 ASK), H-80(missing-intent만: PASS, gap 표시, warn basis 비어 있음). 네 칸 결과 동일
 - [x] 설치 matrix: runtime tree(67, mismatch 0, package 밖 설치 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed, 칸별 T42·C249/C251·C256·H-79·H-80·C258. 공개 0.3.0과 review(PASS·ASK·BLOCK·WARN)·Context Packet·gap 출력 동일, packed e2e(decision-authority, rc-blockers, missing-intent, review-completeness), T45(TASK-015 → D-004·D-005)
 - [x] 정상 저장소: OpenHub와 DUO에서 status·review(3·2 변형)·context가 공개 0.3.0과 byte 동일, doctor는 버전 표기만 다름. upgrade 0.2.2 → 0.3.1·0.3.0 → 0.3.1(Truth 불변, re-init 없음, 0.3.0 index 그대로 current), downgrade 0.3.1 → 0.2.2 fail-closed
-- [x] H-83 기록(main, target `cce2d3d`)
-- [ ] `pnpm release:authorization` OK
-- [ ] npm publish `@duo-director/cli@0.3.1` `--tag latest --access public`(검증한 tarball 그대로)
-- [ ] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local
-- [ ] annotated tag `v0.3.1` → `cce2d3d`, GitHub Release "DUO 0.3.1"(draft 아님, prerelease 아님, latest, tarball 첨부)
-- [ ] `pnpm release:verify-published` OK
+- [x] H-83 기록(main `90515c7`, target `cce2d3d`)
+- [x] `pnpm release:authorization` OK(record HEAD `90515c7` = origin/main, H-83, problems 0)
+- [x] npm publish `@duo-director/cli@0.3.1` `--tag latest --access public`(검증한 tarball 그대로, 2FA 승인). registry가 새 version을 보이기까지 약 30분 걸렸다(publish 시각 03:24 UTC). integrity·shasum·fileCount(7,468)·unpacked 114,194,492 B = RC, `latest` = 0.3.1, `next` = 0.3.0-rc.6 그대로
+- [x] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local: `duoctl 0.3.1`, runtime tree(67, mismatch 0, extra 0, package 밖 설치 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed, 칸별 T42·C249/C251·C256·H-79·H-80·C258, C261~C265·H-80 회귀(publish 전과 같은 결과), 공개 0.3.0과 review·Context Packet·gap 출력 동일, T45(TASK-015 → D-004·D-005; TEMP 정리로 지워진 fixture를 TEMP 밖 사본으로 바꿔 다시 실행)
+- [x] annotated tag `v0.3.1` → `cce2d3d`, GitHub Release "DUO 0.3.1"(draft 아님, prerelease 아님, GitHub latest release = v0.3.1, tarball 첨부)
+- [x] `pnpm release:verify-published` OK(problems 0, channel stable, dist-tags latest 0.3.1·next 0.3.0-rc.6, tag commit = H-83 target)
 
 ## 0.3.0 (H-81, 2026-10-11 stable release, dist-tag `latest`, `v0.3.0` = `98267fa`)
 
