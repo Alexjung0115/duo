@@ -250,6 +250,10 @@ pnpm install && pnpm release:pack          # writes .dist/duo-director-cli-<vers
 npm install -g .dist/duo-director-cli-<version>.tgz
 ```
 
+## Contributing
+
+Bug reports, UX friction reports and small fixes are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [open issues](https://github.com/kanghyunsoon/duo/issues); issues labeled `good first issue` are a good first step. Current work on making DUO need less attention during everyday agent use is tracked in [#2](https://github.com/kanghyunsoon/duo/issues/2).
+
 ## License and security
 
 DUO is released under the [Apache License 2.0](LICENSE). Third-party licenses for bundled software (React in the UI, Tree-sitter grammars, npm dependencies) are in `dist/THIRD_PARTY_NOTICES.md` and `dist/grammars/LICENSE-*` inside the package.

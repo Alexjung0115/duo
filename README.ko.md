@@ -250,6 +250,10 @@ pnpm install && pnpm release:pack          # .dist/duo-director-cli-<version>.tg
 npm install -g .dist/duo-director-cli-<version>.tgz
 ```
 
+## 기여
+
+버그 신고, 사용 중 불편함, 작은 수정을 환영합니다. [CONTRIBUTING.md](CONTRIBUTING.md)(영문)와 [열린 Issue](https://github.com/kanghyunsoon/duo/issues)에서 시작해 주세요. `good first issue` label이 붙은 Issue가 첫 기여에 알맞습니다. 일상적인 Agent 사용에서 DUO에 신경 쓸 일을 줄이는 작업은 [#2](https://github.com/kanghyunsoon/duo/issues/2)에서 추적합니다.
+
 ## License와 보안
 
 DUO는 [Apache License 2.0](LICENSE)으로 배포합니다. 배포 package에 들어 있는 제3자 소프트웨어(UI의 React, Tree-sitter grammar, npm 의존성)의 license는 package 안의 `dist/THIRD_PARTY_NOTICES.md`와 `dist/grammars/LICENSE-*`에 있습니다.

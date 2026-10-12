@@ -1,0 +1,108 @@
+name: Bug report
+description: Something in DUO does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please search the existing issues first.
+
+        **Do not report security vulnerabilities here.** Use GitHub Private Vulnerability Reporting as described in [SECURITY.md](https://github.com/kanghyunsoon/duo/blob/main/SECURITY.md).
+
+        Do not paste API keys, tokens or private source code. A redacted example is enough.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong, in one or two sentences.
+    validations:
+      required: true
+  - type: input
+    id: duo-version
+    attributes:
+      label: DUO version
+      description: Output of `duoctl --version`.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11, macOS 15, Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: "v24.15.0"
+    validations:
+      required: true
+  - type: input
+    id: package-manager
+    attributes:
+      label: npm / pnpm version (if relevant)
+      description: For example when the problem is about installing DUO.
+  - type: input
+    id: languages
+    attributes:
+      label: Repository language(s)
+      description: The main languages of the repository you ran DUO on.
+      placeholder: "TypeScript, Python"
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Command or workflow
+      description: The DUO command, MCP tool or agent workflow involved (for example `duoctl review --staged`, `duo_get_context` from Codex).
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Output of the same command with `--json`, or the error message. Remove anything private.
+      render: shell
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: A small public repository, a script, or the smallest set of files that shows the problem.
+  - type: dropdown
+    id: truth-shareable
+    attributes:
+      label: Can the Project Truth (`.duo-project/`) be shared?
+      description: It helps to see the Decisions and rules involved.
+      options:
+        - "Yes"
+        - "Partly, in redacted form"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

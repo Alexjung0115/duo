@@ -1,0 +1,42 @@
+name: Feature request
+description: Describe a problem DUO should solve for you.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please start with the problem you have, not the feature you have in mind. That helps us find the smallest change that solves it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What are you trying to do, and what gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround
+      description: What do you do today instead?
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should be true when this is solved?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Example workflow
+      description: A short example of how you would use it, step by step.
+  - type: textarea
+    id: insufficient
+    attributes:
+      label: Why the current DUO flow is not enough
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
