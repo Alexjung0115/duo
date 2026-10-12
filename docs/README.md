@@ -26,6 +26,7 @@ DUO는 SDD(Specification-Driven Development)로 개발한다. 구현은 이 문�
 | [release/checklist.md](release/checklist.md) | release 명령, version별 release 기록(0.2.2, 0.2.1, 0.2.0, 0.1.2, 0.1.1, 0.1.0: 준비 항목과 최종 상태), publish 순서, limitation |
 | [release/notes-0.1.1.md](release/notes-0.1.1.md) | 0.1.1 release notes |
 | [release/notes-0.1.2.md](release/notes-0.1.2.md) | 0.1.2 release notes |
+| [release/notes-0.3.2.md](release/notes-0.3.2.md) | 0.3.2 stable patch release notes(H-84, H-85, H-86, dist-tag latest): `install remove`가 DUO가 만든 MCP 설정 파일을 지움(#6), Agent bridge의 tool 탐색·CLI fallback 안내(#8, 기존 설치는 install 재실행), 변하지 않은 것, 업그레이드·되돌리기, 알려진 한계(#7, C259·C260 등) |
 | [release/notes-0.3.1.md](release/notes-0.3.1.md) | 0.3.1 stable correctness patch release notes(H-82, H-83, dist-tag latest): Decision authority integrity(C261~C263), review snapshot(C264), review 분석 완결성(C265), 업그레이드·되돌리기, 알려진 한계, machine contract |
 | [release/notes-0.3.0.md](release/notes-0.3.0.md) | 0.3.0 stable release notes(H-81, dist-tag latest): 0.2.2 대비 Human 확정 Decision workflow, imported_paths, review-pending, Context 정밀도, review 신호(H-80·C258), 안전, 업그레이드·되돌리기, 알려진 한계(C259 포함), machine contract |
 | [release/notes-0.3.0-rc.6.md](release/notes-0.3.0-rc.6.md) | 0.3.0-rc.6 release notes(branch next, dist-tag next): missing-intent는 surface만 하고 단독 WARN 아님(H-80, C239), MCP review text의 Knowledge gap 표시, missing-intent 문구 정정(C258), 알려진 한계, 호환성, machine contract 변경 |

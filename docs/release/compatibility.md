@@ -88,6 +88,19 @@
 | Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
 | Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
 
+## 0.3.2 변경 분류 (T73, H-86)
+
+0.3.1 → 0.3.2. UX patch(H-84, H-85, H-86). 새 기능, 형식 변경, dependency 변경은 없다. review·context·Decision 결과는 0.3.1과 같다.
+
+| 분류 | 내용 |
+|---|---|
+| Behavior correction | `duoctl install remove <agent>`: DUO가 만든 설정 파일(`.codex/config.toml`, `.mcp.json`)을 계획대로 지우고 결과를 `delete`로 보고하며 status는 `not-configured`(#6, C266). 0.3.1은 파일을 그대로 다시 쓰고 `modify`로 보고했다 |
+| 생성 문구 | Agent bridge block(AGENTS.md, CLAUDE.md)에 두 줄: duo-director MCP server tool 찾기와 CLI fallback, proposal tool이 없을 때 사람에게 알림(#8). 설치된 0.3.1 block은 `outdated`, `duoctl install <agent>`가 block만 갱신 |
+| Unchanged | Truth schema(`schema_version: 1`), Decision Lock 형식, `duo.review/1`·`duo.context/1`·`duo.context-packet/1`·`duo.gap-assessment/1`·`duo.review-record/1`·`duo.adoption-baseline/2`, `CONTEXT_POLICY_VERSION` 8, Graph 형식, MCP tool 9개, CLI 종료 코드 표, H-80, C261~C265 동작, R-DRIFT(#7은 그대로) |
+| Migration | 없음. re-init 불필요. bridge block은 사람이 install을 다시 실행할 때만 바뀐다 |
+| Downgrade | 0.3.1은 같은 Truth를 읽는다. 0.3 Truth의 floor는 그대로 0.2.2 |
+| Known limitation | #7 README external-source-drift, C259·C260 WARN noise, stale index 수동 갱신, 여러 단계의 처음 설정, client별 MCP discovery 차이 |
+
 ## 0.3.1 변경 분류 (T68, H-83)
 
 0.3.0 → 0.3.1. Correctness patch(H-82, C261~C265). 새 기능과 format major bump는 없다. 정상 Project Truth와 정상 입력의 결과는 0.3.0과 같다.
