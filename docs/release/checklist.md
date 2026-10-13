@@ -16,7 +16,7 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
-## 0.3.2 (H-86, 2026-10-13 stable release, dist-tag `latest`)
+## 0.3.2 (H-86, 2026-10-13 stable release, dist-tag `latest`, `v0.3.2` = `c612993`)
 
 Stable UX patch on branch `main`(H-84, H-85, H-86): #6(`install remove`가 DUO가 만든 MCP 설정 파일을 지움, PR #9)과 #8(Agent bridge 안내, PR #10)만 담는다. H-86 exact target `c612993f080b1d68c991370d5ba1344adbbe3c09`. version commit을 PR #12로 검토한 뒤 `next`와 `main`을 같은 commit으로 fast-forward했다. 새 기능 없음, dependency·schema·migration 변경 없음. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.2.md)
 
@@ -31,11 +31,12 @@ Stable UX patch on branch `main`(H-84, H-85, H-86): #6(`install remove`가 DUO�
 - [x] #8(설치본): 새 block 8줄(탐색·CLI fallback·proposal 없음 안내), 0.3.1 block은 `drifted · bridge outdated` → `install codex`가 block만 갱신, npx launcher 문구
 - [x] 정상 저장소: OpenHub와 DUO에서 status·review·context가 공개 0.3.1과 같다. doctor는 버전 표기와, 0.3.1 bridge가 설치된 OpenHub에서 `drifted`(bridge outdated, #8 의도) 표시만 다르다
 - [x] H-86 기록(target `c612993`)
-- [ ] `pnpm release:authorization`
-- [ ] npm publish `@duo-director/cli@0.3.2` `--tag latest --access public`(검증한 tarball 그대로)
-- [ ] registry 설치 matrix
-- [ ] annotated tag `v0.3.2` → `c612993`, GitHub Release "DUO 0.3.2"
-- [ ] `pnpm release:verify-published`
+- [x] `pnpm release:authorization` OK(record HEAD `9abc539` = origin/main, H-86, problems 0)
+- [x] npm publish `@duo-director/cli@0.3.2` `--tag latest --access public`(검증한 tarball 그대로). Agent 세션의 web 2FA 승인이 두 번 만료돼(registry 202 대기 뒤 404, publish 안 됨) 사람이 자기 terminal에서 같은 tarball로 실행했다. registry가 새 version을 보이기까지 publish 뒤 수십 분 걸렸다(확인 03:21 UTC). shasum `23f26490…`·integrity·fileCount(7,468)·unpacked 114,195,112 B = RC, `latest` = 0.3.2, `next` = 0.3.0-rc.6 그대로
+- [x] annotated tag `v0.3.2` → `c612993`, GitHub Release "DUO 0.3.2"(draft 아님, prerelease 아님, GitHub latest release = v0.3.2, tarball 첨부)
+- [x] `pnpm release:verify-published` OK(problems 0, channel stable, dist-tags latest 0.3.2·next 0.3.0-rc.6, tag commit = H-86 target, 설치 파일 7,468·runtime tree 67)
+- [x] registry 설치(`@duo-director/cli@latest`) npm 10/11/12 global과 npm 11 local: `duoctl 0.3.2`, runtime tree(67), doctor, MCP 9, 칸별 추가 회귀, C261~C265·H-80 16개 사례가 공개 0.3.1과 같음(네 칸 동일), #6 remove·#8 bridge 갱신이 publish 전과 같음, 공개 0.3.1과 출력 동일, T45
+- [x] Issue #6 close, `next` → `main` fast-forward
 
 ## 0.3.1 (H-83, 2026-10-12 stable release, dist-tag `latest`, `v0.3.1` = `cce2d3d`)
 
