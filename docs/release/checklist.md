@@ -16,6 +16,27 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
+## 0.3.2 (H-86, 2026-10-13 stable release, dist-tag `latest`)
+
+Stable UX patch on branch `main`(H-84, H-85, H-86): #6(`install remove`가 DUO가 만든 MCP 설정 파일을 지움, PR #9)과 #8(Agent bridge 안내, PR #10)만 담는다. H-86 exact target `c612993f080b1d68c991370d5ba1344adbbe3c09`. version commit을 PR #12로 검토한 뒤 `next`와 `main`을 같은 commit으로 fast-forward했다. 새 기능 없음, dependency·schema·migration 변경 없음. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.2.md)
+
+- [x] 제품 delta(`v0.3.1` 대비 `apps/`·`packages/`): `packages/integration/src/agents/integration.ts`(#6), `packages/integration/src/agents/bridge.ts`(#8). 나머지는 test·문서·version. MCP tool 9개, `CONTEXT_POLICY_VERSION` 8, Truth schema·lock 형식·공개 `/1` 형식 그대로
+- [x] version 0.3.2(`c612993`), release lock(diff는 version 2줄, 67 packages, runtime tree `264ab643…`로 0.3.1과 같음), release notes, compatibility 0.3.2 절
+- [x] tarball `duo-director-cli-0.3.2.tgz` 24,378,255 B, 7,468 files, bundled 67, sha1 `23f264900ac11dbcb888484111fd5a36866b7da2`, sha256 `d0f0f22923b329770520063e14d7be97f51304ff3c89965066c620658cdb050c`, integrity `sha512-1/EF8FUeaLkwBipR+1/zJdo9cSlV8ii25lI6urNuI2OLxDKYbCrXn7W4WUodWa2ovESfAaSiDPfjD6VPVrqzsw==`. release pack, 독립 pack, preflight 재pack 모두 byte 동일
+- [x] CI 3 OS(PR #12, 후보 run 38326026797) success
+- [x] `pnpm release:preflight` READY(ready·codeReady·externalReady true, blockers 0, releaseChannel stable, branch main, upstream origin/main, dry-run tag latest): verify, grammar, benchmark smoke, 배포 E2E, conformance(98/0, C209 20/0), upgrade, audit(advisory 0, deprecated 0, artifact = lock), secret·절대경로 0, license 비허용 0, dry-run 7,468 = RC
+- [x] upgrade 0.2.2 → 0.3.2, 0.3.1 → 0.3.2(Truth 불변, re-init 없음)
+- [x] 설치 matrix(npm 10/11/12 global, npm 11 local): runtime tree(67, mismatch 0, package 밖 설치 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed, 칸별 T42·C249/C251·C256·H-79·H-80·C258. C261~C265·H-80 16개 사례가 공개 0.3.1과 같고 네 칸이 같다. packed e2e 20/20, T45, downgrade 0.3.2 → 0.2.2 fail-closed
+- [x] #6(설치본): DUO가 만든 `.codex/config.toml`·`.mcp.json`은 plan = apply = delete, backup 보존, status `not-configured`, 두 번째 remove no-op. 기존 Codex TOML·AGENTS.md·CLAUDE.md는 byte 동일, 기존 `.mcp.json`은 값 동일(서식은 재직렬화, 기존 동작)
+- [x] #8(설치본): 새 block 8줄(탐색·CLI fallback·proposal 없음 안내), 0.3.1 block은 `drifted · bridge outdated` → `install codex`가 block만 갱신, npx launcher 문구
+- [x] 정상 저장소: OpenHub와 DUO에서 status·review·context가 공개 0.3.1과 같다. doctor는 버전 표기와, 0.3.1 bridge가 설치된 OpenHub에서 `drifted`(bridge outdated, #8 의도) 표시만 다르다
+- [x] H-86 기록(target `c612993`)
+- [ ] `pnpm release:authorization`
+- [ ] npm publish `@duo-director/cli@0.3.2` `--tag latest --access public`(검증한 tarball 그대로)
+- [ ] registry 설치 matrix
+- [ ] annotated tag `v0.3.2` → `c612993`, GitHub Release "DUO 0.3.2"
+- [ ] `pnpm release:verify-published`
+
 ## 0.3.1 (H-83, 2026-10-12 stable release, dist-tag `latest`, `v0.3.1` = `cce2d3d`)
 
 Stable correctness patch on branch `main`(H-82, H-83): C261~C265만 고친다. H-83 exact target `cce2d3d6a8d8f559155aed19ca7da3b1e5dfabb5`. `next`(T65~T67, H-83 기록)를 `main`에 fast-forward한 뒤 version commit을 만들었다. 새 기능 없음, migration 없음. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.1.md)
