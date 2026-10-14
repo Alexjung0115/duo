@@ -88,6 +88,22 @@
 | Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
 | Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
 
+## 0.3.3 변경 분류 (T78, H-87)
+
+0.3.2 → 0.3.3. UX·안정성 patch(H-87). 새 규칙과 새 검사 종류, dependency 변경, 형식 major 변경은 없다. review의 verdict·claim·evidence·gap, context, Decision 결과는 0.3.2와 같다(T77에서 같은 저장소·같은 변경으로 나란히 확인).
+
+| 분류 | 내용 |
+|---|---|
+| Additive 필드 | `duo.status/1` `truth.unscopedConstraints`(match 범위 없는 confirmed Constraint ID, 없으면 빈 배열), `duo.doctor/1` `truth.project` facts `unscopedConstraints`, `duo.review/1` limitation `constraints-unscoped`(verdict 입력 아님). MCP `duo_get_status` text에 `constraints not checked` 부분(#14) |
+| 오류 분류 | `duoctl init --answers -`의 잘못된 answer 모양은 `INIT_ANSWER_INVALID`(질문·필드·예). 0.3.2는 `CLI_USAGE_INVALID: a.statements is not iterable`. 종료 코드 1, 쓰기 0은 같다(#15) |
+| 사람 출력 | review의 CONFLICT claim 아래 `observed:` 한 줄(#16). init constraint 질문 문구와 안내 줄, status·doctor·review의 미검사 constraint 줄(#14). install의 Codex trust·Claude Code 승인 안내 문구(`warnings`·`nextActions` 문자열, #3(a)) |
+| 생성 문구 | Agent bridge block에 tool 목록 재확인 한 줄(9줄). 설치된 0.3.2 block은 `outdated`, `duoctl install <agent>`가 사람 확인 뒤 block만 갱신(#8 M2) |
+| 시작 동작 | `duoctl mcp`는 typescript·gpt-tokenizer·MCP client·yaml·Markdown parser를 처음 쓸 때 읽는다. tool 9개의 이름·schema·annotation과 결과는 같고 token 수도 같다. `duoctl`은 시작할 때 선언된 runtime dependency를 resolve만 해서 빠진 dependency를 incomplete installation으로 보고한다(#8 M1). 측정값은 환경에 따라 다르며 보장값이 아니다 |
+| Unchanged | Truth schema(`schema_version: 1`), Decision Lock 형식, Adoption Baseline, `duo.context/1`·`duo.context-packet/1`·`duo.gap-assessment/1`·`duo.review-record/1`·`duo.adoption-baseline/2`, `CONTEXT_POLICY_VERSION` 8, Graph 형식, MCP tool 9개, CLI 종료 코드 표, H-80, C261~C265, R-DRIFT(#7), Constraint를 결정적으로 검사하지 않는다는 계약(ADR-007, C107/H-33) |
+| Migration | 없음. re-init 불필요. bridge block은 사람이 install을 다시 실행할 때만 바뀐다 |
+| Downgrade | 0.3.2는 같은 Truth를 읽는다. 0.3 Truth의 floor는 그대로 0.2.2 |
+| Known limitation | Constraint 미검사(C-C·C-D는 0.4), 실제 Codex MCP 발견률 NOT TESTED(#8 Open), #7 README drift, C259·C260 WARN noise, stale index 수동 갱신, 여러 단계의 처음 설정, `.mcp.json` 재직렬화 |
+
 ## 0.3.2 변경 분류 (T73, H-86)
 
 0.3.1 → 0.3.2. UX patch(H-84, H-85, H-86). 새 기능, 형식 변경, dependency 변경은 없다. review·context·Decision 결과는 0.3.1과 같다.
