@@ -16,18 +16,20 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
-## 0.3.3 (H-87, stable release candidate, dist-tag `latest`)
+## 0.3.3 (H-87, stable release candidate `e4abe6a`, dist-tag `latest`)
 
-Stable UX patch on branch `main`(H-87): #14(검사하지 않는 constraint 표시, PR #18), #8(MCP 시작 지연 적재와 bridge 재확인 안내, PR #19), #15(init answers 오류, PR #20), #16(review의 정확한 위반 줄, PR #21), #3(a)(Codex trust·Claude Code 승인 안내, PR #22)만 담는다. version commit을 PR로 검토한 뒤 `next`와 `main`을 같은 commit으로 fast-forward한다. 새 규칙·검사 없음, dependency·schema·migration 변경 없음. External Validation 01은 정확히 0.2.1이다. 정확한 target SHA와 gate 결과는 gate 뒤 이 절과 H-87에 기록한다. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.3.md)
+Stable UX patch on branch `main`(H-87): #14(검사하지 않는 constraint 표시, PR #18), #8(MCP 시작 지연 적재와 bridge 재확인 안내, PR #19), #15(init answers 오류, PR #20), #16(review의 정확한 위반 줄, PR #21), #3(a)(Codex trust·Claude Code 승인 안내, PR #22)만 담는다. version commit을 PR로 검토한 뒤 `next`와 `main`을 같은 commit으로 fast-forward한다. 새 규칙·검사 없음, dependency·schema·migration 변경 없음. External Validation 01은 정확히 0.2.1이다. H-87 exact target `e4abe6afad061a6ab8f23e3ae0ae32118521de24`. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.3.md)
 
-- [ ] 제품 delta(`v0.3.2` 대비 `apps/`·`packages/`)가 H-87 목록과 같다. MCP tool 9개, `CONTEXT_POLICY_VERSION` 8, Truth schema·lock 형식·공개 `/1` 형식 그대로
-- [ ] version 0.3.3, release lock(diff는 version 2줄, 67 packages), release notes, compatibility 0.3.3 절
-- [ ] CI 3 OS(version PR, 후보 commit)
-- [ ] tarball 크기·파일 수·sha1·sha256·integrity, release pack·독립 pack·preflight 재pack byte 동일
-- [ ] `pnpm release:preflight` READY
-- [ ] upgrade 0.3.2 → 0.3.3(Truth 불변, re-init 없음)
-- [ ] 설치본 확인: #14·#8·#15·#16·#3(a), MCP 9, canonical BLOCK, Decision Lock, context
-- [ ] H-87 기록(target SHA)
+- [x] 제품 delta(`v0.3.2` 대비 `apps/`·`packages/`)가 H-87 목록과 같다(test 제외 22 files). dependency 변경 없음. MCP tool 9개(이름·schema·annotation이 0.3.2와 byte 동일), `CONTEXT_POLICY_VERSION` 8, Truth schema·lock 형식·공개 `/1` 형식 그대로
+- [x] version 0.3.3(`e4abe6a`, PR #23), release lock(diff는 version 2줄, 67 packages, runtime tree `264ab643…`로 0.3.2와 같음), release notes, compatibility 0.3.3 절
+- [x] CI 3 OS: PR #23(Windows 배포 E2E 1차 실패: project-local `npm install -D`가 spawn 600초 제한 초과, 같은 commit 재실행 success, 로컬 22/22), `next` run 38661153789, `main` run 38664707979 success
+- [x] tarball `duo-director-cli-0.3.3.tgz` 24,379,674 B, 7,468 files, bundled 67, sha1 `638e5fa5ad89e950b83937135aed2cf669af789b`, sha256 `436b7896147f0c7f7ff76a25e51cb38630fc1397db3ee9055031ef3ae6fd629c`, integrity `sha512-vnF+OgdH0ocyRgAH7ZzL/EBmYG8JmZnXDhm9deHA1Y8jfLemBXteMcBvbpUvlczN463fwM7ct6/+X7UhNgrDbw==`. release pack, 독립 pack, preflight 재pack 2회 모두 byte 동일
+- [x] `pnpm release:preflight` READY(ready·codeReady·externalReady true, blockers 0, releaseChannel stable, branch main, upstream origin/main, dry-run tag latest, npm scope owner, 0.3.3 미게시): verify, grammar, benchmark smoke, 배포 E2E, conformance(98/0, C209 20/0), upgrade(0.2.0 → 0.3.3), audit(advisory 0), secret·절대경로 0, license 비허용 0, dry-run 7,468 = RC. 첫 실행은 npm 인증 만료로 BLOCKED(externalReady false), 재로그인 뒤 같은 commit에서 READY
+- [x] upgrade 0.3.2 → 0.3.3(ts, python, cpp, sparse: Truth 불변, re-init 없음)
+- [x] 설치 matrix(npm 10/11/12 global, npm 11 local): runtime tree(67, mismatch 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed. 칸별 T42·H-71/H-72(Decision Lock, proposal confirm)·C249/C251·C256·H-79·H-80·C258 16/16 ok, T45(oh45), downgrade 0.3.3 → 0.2.2 fail-closed
+- [x] 공개 0.3.2와 비교: Decision Compliance·Knowledge Gap fixture의 review JSON·종료 코드·context packet·gap 같음. 사람 review 출력은 CONFLICT 아래 `observed:` 줄 추가만(#16). 같은 금지 import 변경에서 verdict·claim·evidence 같고 limitation `constraints-unscoped`와 status `truth.unscopedConstraints`만 추가(#14)
+- [x] #8: MCP initialize 중앙값(Windows, Node 24.18, 19-file 저장소, T77) 단독 0.3.2 1.61–1.73초 → 0.72–0.83초, 8개 동시 1.93–2.00초 → 0.99–1.03초. 0.3.2 bridge는 `outdated`, `install`이 사람 확인 뒤 block만 갱신. 실제 Codex MCP 발견률은 NOT TESTED(#8 Open)
+- [x] H-87 기록(target `e4abe6a`)
 - [ ] `pnpm release:authorization`
 - [ ] npm publish `@duo-director/cli@0.3.3` `--tag latest --access public`(검증한 tarball 그대로, 별도 승인)
 - [ ] annotated tag `v0.3.3`, GitHub Release "DUO 0.3.3"(별도 승인)
