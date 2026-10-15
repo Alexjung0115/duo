@@ -16,7 +16,7 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
-## 0.3.3 (H-87, stable release candidate `e4abe6a`, dist-tag `latest`)
+## 0.3.3 (H-87, 2026-10-15 stable release, dist-tag `latest`, `v0.3.3` = `e4abe6a`)
 
 Stable UX patch on branch `main`(H-87): #14(검사하지 않는 constraint 표시, PR #18), #8(MCP 시작 지연 적재와 bridge 재확인 안내, PR #19), #15(init answers 오류, PR #20), #16(review의 정확한 위반 줄, PR #21), #3(a)(Codex trust·Claude Code 승인 안내, PR #22)만 담는다. version commit을 PR로 검토한 뒤 `next`와 `main`을 같은 commit으로 fast-forward한다. 새 규칙·검사 없음, dependency·schema·migration 변경 없음. External Validation 01은 정확히 0.2.1이다. H-87 exact target `e4abe6afad061a6ab8f23e3ae0ae32118521de24`. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.3.md)
 
@@ -30,10 +30,13 @@ Stable UX patch on branch `main`(H-87): #14(검사하지 않는 constraint 표�
 - [x] 공개 0.3.2와 비교: Decision Compliance·Knowledge Gap fixture의 review JSON·종료 코드·context packet·gap 같음. 사람 review 출력은 CONFLICT 아래 `observed:` 줄 추가만(#16). 같은 금지 import 변경에서 verdict·claim·evidence 같고 limitation `constraints-unscoped`와 status `truth.unscopedConstraints`만 추가(#14)
 - [x] #8: MCP initialize 중앙값(Windows, Node 24.18, 19-file 저장소, T77) 단독 0.3.2 1.61–1.73초 → 0.72–0.83초, 8개 동시 1.93–2.00초 → 0.99–1.03초. 0.3.2 bridge는 `outdated`, `install`이 사람 확인 뒤 block만 갱신. 실제 Codex MCP 발견률은 NOT TESTED(#8 Open)
 - [x] H-87 기록(target `e4abe6a`)
-- [ ] `pnpm release:authorization`
-- [ ] npm publish `@duo-director/cli@0.3.3` `--tag latest --access public`(검증한 tarball 그대로, 별도 승인)
-- [ ] annotated tag `v0.3.3`, GitHub Release "DUO 0.3.3"(별도 승인)
-- [ ] `pnpm release:verify-published`
+- [x] `pnpm release:authorization` OK(H-87, record HEAD `8b91b7f`, 후보 뒤 변경은 `docs/`만). 그 commit의 `main` CI(run 38680385920) 3 OS success 뒤 publish
+- [x] npm publish `@duo-director/cli@0.3.3` `--tag latest --access public`(검증한 tarball 그대로, 사람이 자기 terminal에서 2FA와 함께 실행, 04:47:39 UTC). registry metadata는 바로 보였지만 tarball URL은 약 6분 동안 404였다(재게시하지 않고 기다림). shasum `638e5fa5…`·integrity·fileCount 7,468·unpacked 114,203,857 B = RC, registry tarball sha256 `436b7896…629c` = RC, `latest` = 0.3.3, `next` = 0.3.0-rc.6 그대로
+- [x] annotated tag `v0.3.3` → `e4abe6a`, GitHub Release "DUO 0.3.3"(draft 아님, prerelease 아님, GitHub latest release = v0.3.3, tarball 첨부, asset sha256 = RC)
+- [x] `pnpm release:verify-published` OK(problems 0, channel stable, dist-tags latest 0.3.3·next 0.3.0-rc.6, tag commit = H-87 target, 설치 파일 7,468·runtime tree 67). 첫 실행은 tarball 404 동안이라 install 실패, 반영 뒤 OK
+- [x] registry 설치(`@duo-director/cli@0.3.3`) npm 10/11/12 global과 npm 11 local: `duoctl 0.3.3`, runtime tree(67, mismatch 0), doctor, MCP 9, canonical BLOCK, `--fail-on block` 4, invalid Truth fail-closed. 칸별 추가 회귀 16/16 ok, T45, downgrade 0.3.3 → 0.2.2 fail-closed, 공개 0.3.2와 사람 review 출력 차이는 `observed:` 줄 추가만
+- [x] 공개 설치본으로 #14(init 안내, status·doctor의 미검사 constraint, review limitation `constraints-unscoped`), #15(잘못된 answer → `INIT_ANSWER_INVALID`, 쓰기 0), #16(`observed: … src/ui/page.js:3 …`) 확인. 실제 Codex MCP 발견률은 NOT TESTED(#8 Open)
+- [x] Issue #14·#15·#16 close. #8·#3·#4·#5·#7 Open 유지
 
 ## 0.3.2 (H-86, 2026-10-13 stable release, dist-tag `latest`, `v0.3.2` = `c612993`)
 
