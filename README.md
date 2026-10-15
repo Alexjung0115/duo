@@ -4,6 +4,8 @@
 [![CI](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+**Source repository: [github.com/kanghyunsoon/duo](https://github.com/kanghyunsoon/duo)** (development, issues and releases happen there).
+
 **Decision compliance for coding agents.**
 
 Keep coding agents aligned with human-confirmed engineering decisions. You confirm the decisions. Coding agents such as Codex and Claude Code implement. DUO checks repository changes against those decisions on its own and reports what it found, with file and line evidence. DUO does not write code.

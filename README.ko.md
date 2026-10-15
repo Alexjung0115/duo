@@ -4,6 +4,8 @@
 [![CI](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
+**원본 저장소: [github.com/kanghyunsoon/duo](https://github.com/kanghyunsoon/duo)** (개발, Issue, release는 이곳에서 진행합니다).
+
 **Coding Agent를 위한 Decision compliance.**
 
 사람이 확정한 엔지니어링 결정(Decision)에서 Coding Agent가 벗어나지 않게 합니다. 결정은 사람이 확정하고, 구현은 Codex·Claude Code 같은 Coding Agent가 합니다. DUO는 저장소 변경을 그 결정과 독립적으로 대조하고, 찾은 내용을 파일과 줄 단위 근거와 함께 보고합니다. DUO는 코드를 작성하지 않습니다.
