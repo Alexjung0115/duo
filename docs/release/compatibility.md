@@ -88,6 +88,17 @@
 | Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
 | Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
 
+## 0.3.4 변경 분류 (T135, security patch)
+
+0.3.3 → 0.3.4. 보안 dependency patch만 있다. 번들된 `@modelcontextprotocol/client`·`server`·`core` 2.2.0 → 2.3.1(GHSA-jm63-cq47-j5jp, GHSA-46jr-4wx8-v453, GHSA-rvq5-wwqv-78pq, GHSA-6prh-2h8m-c8cw), `zod` 4.6.5 → 4.6.7(GHSA-mrhx-c7xc-m3w5).
+
+| 분류 | 내용 |
+|---|---|
+| Runtime | release lock은 같은 67개 package이며 바뀐 것은 위 네 version뿐이다. install script 없음. MCP SDK license가 MIT에서 Apache-2.0으로 바뀌었고 THIRD_PARTY_NOTICES.md에 반영된다 |
+| Unchanged | Truth schema, Decision Lock, 모든 `/1` 형식, MCP tool 9개의 이름·schema·annotation, UI API, CLI 명령·옵션·종료 코드, Graph 형식. review·context·Decision 결과는 0.3.3과 같다 |
+| Migration | 없음. index는 current로 남고 agent 설정을 다시 쓸 필요가 없다 |
+| Downgrade | 0.3.3은 같은 Truth를 읽지만 advisory가 있는 dependency를 번들한다 |
+
 ## 0.3.3 변경 분류 (T78, H-87)
 
 0.3.2 → 0.3.3. UX·안정성 patch(H-87). 새 규칙과 새 검사 종류, dependency 변경, 형식 major 변경은 없다. review의 verdict·claim·evidence·gap, context, Decision 결과는 0.3.2와 같다(T77에서 같은 저장소·같은 변경으로 나란히 확인).
