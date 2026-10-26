@@ -16,6 +16,21 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
+## 0.4.0-rc.1 (H-92, 2026-10-26 승인, prerelease 미게시, dist-tag `next`, `v0.4.0-rc.1` = `beac63a`)
+
+Prerelease on branch `next`: 0.3.4 이후의 Work map, UI local API, MCP annotation, launcher 검사와 0.3.4 보안 dependency를 담는다. H-92 exact target `beac63aee7b5df68ef463c82bfaa6bd7ce3baf2c`. `latest`는 0.3.4 그대로이고 `next`를 `main`에 merge하지 않는다. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/next/docs/release/notes-0.4.0-rc.1.md)
+
+- [x] version 0.4.0-rc.1, release lock(diff는 version 2줄, 67 packages, MCP SDK 2.3.1·zod 4.6.7), release notes, compatibility 0.4.0-rc.1 절(PR #87 6파일, 제품 소스 변경 없음)
+- [x] review: 독립 reviewer 부재로 Maintainer 직접 검토(https://github.com/kanghyunsoon/duo/pull/87#issuecomment-6405263572)와 단일 관리자 예외(https://github.com/kanghyunsoon/duo/pull/87#issuecomment-6405790538). 독립 APPROVED 없음
+- [x] CI 3 OS: PR #87 run 40176518181 success, `next` `beac63a` run 40251412375 success
+- [x] tarball 24,486,869 B(unpacked 114,587,452 B), 7,468 files, bundled 67, sha256 `a983e730…dfbb4f`. T140(`0acebeb`) pack, T147·T148 preflight pack과 재pack 모두 같은 bytes
+- [x] `release:preflight` READY on `next` `beac63a` — READY(T149, 2026-10-26: ready·codeReady·externalReady true, blockers 0, releaseChannel prerelease, branch next = next, upstream origin/next, dry-run tag next): verify 146/146 files·1,428 passed, grammar, benchmark smoke, 배포 E2E, conformance 118/0·C209 20/0, upgrade 0.2.0 → RC, audit 0, 재현성 같음, secret·절대경로 0, license 비허용 0, notice 누락 0, dry-run 7,468 = RC, npm scope member. 실행 조건: `VITEST_MAX_WORKERS=3`(GitHub windows-latest 4 vCPU의 vitest 기본값과 같음, 실행 중 fork worker 최대 3 실측). 테스트 생략·timeout 증가·소스·release script 변경 없음. 제한 없이(22 thread에서 21 worker) 돌린 T147·T148 preflight는 로컬 browser E2E timing으로 BLOCKED(#98, 미해결). #90 때문에 `node scripts/release/preflight.mjs`로 실행
+- [x] upgrade 0.2.0 → RC(T147·T148 preflight), 0.3.3·0.3.4 → RC(T140, 같은 tree)
+- [x] security: artifact `release:audit` 0, workspace `pnpm audit --prod` 0. dev-only vitest 계열 advisory는 #91
+- [x] H-92 기록(2026-10-26, Maintainer kanghyunsoon 승인(T152), target `beac63a`, PR #92 `main` docs 전용 갱신, `main-stable` 관리자 예외 1회, 독립 승인 없음)
+- [ ] `release:authorization` OK(이 기록이 `origin/main`에 반영된 뒤 `next` `beac63a`에서 실행)
+- [ ] npm publish `--tag next`, registry 검증, tag `v0.4.0-rc.1`, GitHub prerelease, `release:verify-published`(별도 Maintainer 승인 대상, 미실행)
+
 ## 0.3.4 (H-93, 2026-10-25 stable security patch, dist-tag `latest`, `v0.3.4` = `76247bf`)
 
 Stable security patch on branch `main`(H-93): 번들 MCP SDK(client·server·core) 2.2.0 → 2.3.1, zod 4.6.5 → 4.6.7. 공개 0.3.3과 제품 소스가 같은 `main`(`9c17841`)에서 hotfix branch `release/0.3.4`(PR #89)로 만들고 `main`을 그 commit으로 fast-forward했다. 소스·schema·migration 변경 없음, 0.4 기능 없음. External Validation 01은 정확히 0.2.1이다. H-93 exact target `76247bfc218abdd1c3841f7c89181adb65d2acad`. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.4.md)
@@ -28,6 +43,11 @@ Stable security patch on branch `main`(H-93): 번들 MCP SDK(client·server·cor
 - [x] upgrade 0.3.3 → 0.3.4, 0.2.0 → 0.3.4(T135, ts·python·cpp·sparse: Truth 불변, re-init 없음)
 - [x] security: artifact `release:audit` 0, workspace `pnpm audit --prod` 0. dev-only vitest 계열 advisory는 #91(package에 없음)
 - [x] H-93 기록(target `76247bf`)
+- [x] `release:authorization` OK(H-93, record HEAD `3b3c9af`, 후보 뒤 변경은 `docs/`만). 그 commit의 `main` CI(run 40163424251) 3 OS success 뒤 publish
+- [x] npm publish `@duo-director/cli@0.3.4` `--tag latest --access public`(검증한 tarball 그대로, 사람의 2FA 승인, 2026-10-25 08:1x UTC). 앞의 두 시도는 2FA 승인 세션이 만료돼 E404(`/-/v1/done`)로 끝났고 아무것도 게시되지 않았다(매번 registry에서 미게시 확인). registry 반영은 약 2분 늦었고 다시 게시하지 않고 기다렸다. shasum `c770c36a…`·integrity·fileCount 7,468·unpacked 114,312,642 B = RC, registry tarball sha256 `91a348e7…0e2f` = RC, `latest` = 0.3.4, `next` = 0.3.0-rc.6 그대로
+- [x] annotated tag `v0.3.4` → `76247bf`, GitHub Release "DUO 0.3.4"(draft 아님, prerelease 아님, GitHub latest release = v0.3.4, tarball 첨부, asset sha256 = RC)
+- [x] `release:verify-published` OK(problems 0, channel stable, dist-tags latest 0.3.4·next 0.3.0-rc.6, tag commit = H-93 target, 설치 파일 7,468·runtime tree 67). `node scripts/release/verify-published.mjs`로 실행(#90)
+- [x] registry 설치(`@duo-director/cli@latest`, 빈 prefix): `duoctl 0.3.4`, 번들 MCP SDK client·server·core 2.3.1, zod 4.6.7
 
 ## 0.3.3 (H-87, 2026-10-15 stable release, dist-tag `latest`, `v0.3.3` = `e4abe6a`)
 
