@@ -16,6 +16,25 @@
 | `pnpm release:verify-published` | publish **뒤** 확인(T21): registry의 name·version·integrity·license·engines·bin → 빈 npm 설정과 새 cache로 임시 prefix에 `npm install -g` → 설치된 파일 수(bundled `node_modules/` 포함, npm이 만든 `.bin` 제외)·LICENSE·runtime tree(0.2.1부터 설치 트리 = `dist/runtime-tree.json`, 그 전 version은 `npm-shrinkwrap.json` 존재) → PATH의 `duoctl --version`·`--version --json`·`--help` → 새 Git 저장소에서 `init`→`status` → origin의 `v<version>` tag commit → GitHub Release(draft 아님) → release channel(stable: dist-tag latest = version, GitHub Release prerelease 아님; prerelease: dist-tag next = version, latest는 stable version 그대로, GitHub Release prerelease) → `.dist/release-published.json`. 기대 integrity와 commit은 `--integrity`·`--commit` 또는 같은 version의 `.dist/release-candidate.json`. publish·tag·login을 하지 않고 npm credential을 읽지 않는다. CI와 `pnpm verify`에는 넣지 않는다 | 필요 |
 | `pnpm release:authorization` | publish **직전** 확인(H-81, T63; T60 사고 재발 방지): `.dist/release-candidate.json`의 version·commit에 대해 Human Decision 행(`docs/conflicts.md`의 H-n 행)이 전체 commit SHA와 정확한 version(0.3.0은 0.3.0-rc.6과 다름)을 담는지, `docs/release/checklist.md`에 그 version을 제목에 담고 commit(7자 이상)을 적은 절이 있는지, 두 파일에 program source처럼 보이는 줄(JavaScript처럼 시작하는 줄, fs require)이 없는지, 후보 commit 뒤로 `docs/` 밖이 바뀌지 않았는지 확인 → `.dist/release-authorization.json`. 기록은 working tree가 아니라 Git ref에서 읽는다: stable은 push된 `HEAD`(main), prerelease는 `origin/main`. 그래서 checklist의 해당 version 절(후보 SHA 포함)은 publish 전에 먼저 쓰고, publish 뒤 결과를 채운다 | 없음(Git만) |
 
+## 0.3.5 (H-97, 2026-10-28 stable data-safety patch, dist-tag `latest`, `v0.3.5` = `71644c8`)
+
+Stable data-safety patch on branch `main`(H-97): #104 수정(H-94)의 stable backport. 공개 0.3.4와 제품 소스가 같은 `main`(`013208e`)에서 hotfix branch `hotfix/0.3.5-issue-104`(PR #128)로 만들고 `main`을 그 commit으로 fast-forward했다. dependency·schema·migration 변경 없음, 0.4 기능 없음. External Validation 01은 정확히 0.2.1이다. H-97 exact target `71644c89a9ecb50baab98304c553effe378361cf`. [release notes](https://github.com/kanghyunsoon/duo/blob/main/docs/release/notes-0.3.5.md)
+
+- [x] 변경: `packages/integration/src/agents` 소스 4개(#113 backport, 0.4 launcher 줄 제외), test 3개, packed distribution E2E(#104 4건), version 0.3.5(release lock은 version 필드만, 67 packages), release notes, compatibility 0.3.5 절, docs index, README 링크, H-94 row
+- [x] review: 독립 review 없음(strdeok 예비군 부재). Maintainer 직접 검토와 1회 예외(H-97, [기록](https://github.com/kanghyunsoon/duo/pull/128#issuecomment-6461003745)). 독립 승인 아님
+- [x] CI 3 OS: PR #128 run 40623410672, `main` run 40634973645 success
+- [x] tarball `duo-director-cli-0.3.5.tgz` 24,405,990 B, 7,468 files, bundled 67, sha1 `965618d5a9efc28b8c59189e6248c11af62c4fd9`, sha256 `30e61c1338fc6c9af4de1f5c5335b95d50d91fe659e4352dabcd2ba58f65b59f`, integrity `sha512-QLlkBLWTipVZ6uCNQaheZlOWDio0EyYU+1Gst/HiOFtuqU4N84i/64lGLWdRI/mTyl1JxWDVXGa6eVvAb0L7Zw==`. T167 pack, preflight pack·재pack 모두 같은 bytes
+- [x] `release:preflight` READY on `main` `71644c8`(ready·codeReady·externalReady true, blockers 0, releaseChannel stable, branch main, upstream origin/main, dry-run tag latest, 0.3.5 미게시): verify 138 files·1,286 passed, grammar, benchmark smoke, 배포 E2E, conformance(98/0, C209 20/0), upgrade(0.2.0 → 0.3.5), audit(advisory 0), 재현성 같음, secret·절대경로 0, license 비허용 0, dry-run = RC. Windows `VITEST_MAX_WORKERS=3`(#98), `node scripts/release/preflight.mjs`(#90)
+- [x] upgrade 0.3.4 → 0.3.5, 0.2.0 → 0.3.5(T167, ts·python·cpp·sparse: Truth 불변, re-init 없음)
+- [x] #104 회귀: 공개 0.3.4는 설치 전부터 있던 파일 4개를 remove에서 지운다. 0.3.5는 같은 파일을 두 번의 install/remove 뒤에도 byte 그대로 남기고, 0.3.4가 설치한 통합은 아무 파일도 지우지 않는다(`keep <file> (no install record)`)
+- [x] security: artifact `release:audit` 0. Dependabot의 dev-only `vite`·`@vitest/mocker`·`source-map-js` advisory는 #91(package에 없음)
+- [x] H-97 기록(target `71644c8`)
+- [ ] `release:authorization` OK(H-97, 후보 뒤 변경은 `docs/`만). 그 commit의 `main` CI 3 OS success 뒤 publish
+- [ ] npm publish `@duo-director/cli@0.3.5` `--tag latest --access public`(검증한 tarball 그대로, 별도 최종 게시 승인과 사람의 2FA)
+- [ ] annotated tag `v0.3.5` → `71644c8`, GitHub Release "DUO 0.3.5"(prerelease 아님, tarball 첨부, asset sha256 = RC)
+- [ ] `release:verify-published` OK
+- [ ] registry 설치로 #104 확인, #104 close
+
 ## 0.4.0-rc.1 (H-92, 2026-10-26 승인, prerelease 미게시, dist-tag `next`, `v0.4.0-rc.1` = `beac63a`)
 
 Prerelease on branch `next`: 0.3.4 이후의 Work map, UI local API, MCP annotation, launcher 검사와 0.3.4 보안 dependency를 담는다. H-92 exact target `beac63aee7b5df68ef463c82bfaa6bd7ce3baf2c`. `latest`는 0.3.4 그대로이고 `next`를 `main`에 merge하지 않는다. External Validation 01은 정확히 0.2.1이다. [release notes](https://github.com/kanghyunsoon/duo/blob/next/docs/release/notes-0.4.0-rc.1.md)
