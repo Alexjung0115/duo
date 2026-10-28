@@ -88,6 +88,20 @@
 | Downgrade | floor는 0.2.2. 0.3 전용 Truth를 쓰는 저장소를 0.2.2는 `PROJECT_TRUTH_INVALID`로 거부한다. 0.2.1 이하는 지원하지 않는다(C244) |
 | Known limitation | `outside-current-milestone` PARTIAL WARN noise(C259, 0.2.x와 같은 동작) |
 
+## 0.3.5 변경 분류 (T167, #104 data-safety patch)
+
+0.3.4 → 0.3.5. `duoctl install remove`의 파일 보존 수정(#104, H-94)만 있다. 설치 전부터 있던 빈 `.mcp.json`·0 byte `CLAUDE.md`·`AGENTS.md`·빈 `.codex/config.toml`을 지우던 동작을 고친다.
+
+| 분류 | 내용 |
+|---|---|
+| Behavior correction | install이 `.duo-project/runtime/agent-integration/<agent>.json`(`duo.agent-file-ownership/1`, Git 제외 runtime)에 파일별 `existedBefore`·`preSha256`·`backup`·`postSha256`을 기록한다. remove는 DUO가 만들었고 설치 뒤 바뀌지 않은 파일만 삭제하고, 설치 전부터 있던 파일은 삭제하지 않는다(바뀌지 않았고 backup digest가 맞으면 원본 byte 복원) |
+| Older installs | 0.3.4 이하가 설치한 통합에는 기록이 없다. 0.3.5 remove는 파일을 지우지 않고 DUO 항목·블록만 빼며 `keep <file> (no install record)` 경고를 낸다. 0.3.4가 만든 파일도 빈 파일로 남고, 기존 `.mcp.json`은 값은 같지만 두 칸 들여쓰기로 다시 쓰일 수 있다(H-94 (10)) |
+| Runtime | release lock은 0.3.4와 같은 67개 package이며 바뀐 것은 version뿐이다. install script 없음 |
+| Unchanged | Truth schema, Decision Lock, 모든 `/1` 형식(`duo.agent-integration-plan/1` 포함, 남기는 파일은 기존 `modify`), MCP tool 9개의 이름·schema·annotation, UI API, CLI 명령·옵션·종료 코드, Graph 형식. review·context·Decision 결과는 0.3.4와 같다. `next`의 launcher 변경(#40)은 포함하지 않는다 |
+| Migration | 없음. agent 설정을 다시 쓸 필요가 없다 |
+| Downgrade | 0.3.4는 같은 Truth를 읽고 ownership 기록을 무시하지만 #104가 있다 |
+
+
 ## 0.3.4 변경 분류 (T135, security patch)
 
 0.3.3 → 0.3.4. 보안 dependency patch만 있다. 번들된 `@modelcontextprotocol/client`·`server`·`core` 2.2.0 → 2.3.1(GHSA-jm63-cq47-j5jp, GHSA-46jr-4wx8-v453, GHSA-rvq5-wwqv-78pq, GHSA-6prh-2h8m-c8cw), `zod` 4.6.5 → 4.6.7(GHSA-mrhx-c7xc-m3w5).

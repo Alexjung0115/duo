@@ -303,6 +303,96 @@ describe("global install (temporary npm prefix)", () => {
     });
   });
 
+  describe("#104 (H-94): the installed duoctl keeps the files that existed before install", () => {
+    // The issue as published in 0.3.0~0.4.0-rc.1: remove deleted a pre-existing file whose content was empty after
+    // DUO's part was taken out. Here the packed CLI does install → remove on real project files.
+    const EMPTY_USER_FILES = { ".mcp.json": "{\"mcpServers\": {}}\n", "CLAUDE.md": "", "AGENTS.md": "", ".codex/config.toml": "" } as const;
+    const AGENTS = ["claude-code", "codex"] as const;
+    const RECORD = (agent: string) => path.join(".duo-project", "runtime", "agent-integration", `${agent}.json`);
+    const sha = (file: string) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+    const digests = (root: string, files: readonly string[]) => Object.fromEntries(files.map((f) => [f, fs.existsSync(path.join(root, f)) ? sha(path.join(root, f)) : "missing"]));
+    const install = (p: Project, args: string[]) => duoctl(p, ["install", ...args, "--non-interactive", "--json"]);
+    function initialized(files: Readonly<Record<string, string>>): Project {
+      const p = project();
+      for (const [file, text] of Object.entries(files)) p.write(file, text);
+      if (Object.keys(files).length > 0) {
+        p.git("add", "-A");
+        p.git("commit", "-qm", "the user's agent files");
+      }
+      const init = duoctl(p, ["init", "--non-interactive", "--answers", "-", "--json"], "[]");
+      expect(init.code, init.stderr).toBe(0);
+      return p;
+    }
+
+    it("pre-existing empty .mcp.json, 0-byte CLAUDE.md and AGENTS.md and an empty .codex/config.toml come back byte for byte, over two install/remove rounds", () => {
+      const p = initialized(EMPTY_USER_FILES);
+      const files = Object.keys(EMPTY_USER_FILES);
+      const before = digests(p.root, files);
+      for (const round of [1, 2]) {
+        for (const agent of AGENTS) {
+          const r = install(p, [agent, "--yes"]);
+          expect(r.code, `round ${round} install ${agent}: ${r.stderr}`).toBe(0);
+        }
+        expect(JSON.parse(p.read(".mcp.json")).mcpServers).toHaveProperty("duo-director");
+        expect(p.read("CLAUDE.md")).toContain("<!-- duo-director:begin -->");
+        expect(p.read(".codex/config.toml")).toContain("duo-director");
+        for (const agent of AGENTS) {
+          const r = install(p, ["remove", agent, "--yes"]);
+          expect(r.code, `round ${round} remove ${agent}: ${r.stderr}`).toBe(0);
+          expect(r.json().result.plan.willDelete, `round ${round} remove ${agent}`).toEqual([]);
+          expect(fs.existsSync(path.join(p.root, RECORD(agent))), `round ${round} record ${agent}`).toBe(false);
+        }
+        expect(digests(p.root, files), `round ${round}`).toEqual(before);
+      }
+      for (const agent of AGENTS) expect(install(p, ["remove", agent, "--yes"]).json().result.plan.noop).toBe(true);
+      expect(p.git("status", "--porcelain", "--", ...files)).toBe("");
+    });
+
+    it("a file a person edits after install keeps the edit: remove strips only DUO's block and does not put the pre-install bytes back", () => {
+      const p = initialized({ "CLAUDE.md": "", ".mcp.json": EMPTY_USER_FILES[".mcp.json"] });
+      expect(install(p, ["claude-code", "--yes"]).code).toBe(0);
+      fs.appendFileSync(path.join(p.root, "CLAUDE.md"), "\nAdded by a person after install.\n");
+      const r = install(p, ["remove", "claude-code", "--yes"]);
+      expect(r.code, r.stderr).toBe(0);
+      const claude = p.read("CLAUDE.md");
+      expect(claude).toContain("Added by a person after install.");
+      expect(claude).not.toContain("duo-director");
+      expect(p.read(".mcp.json")).toBe(EMPTY_USER_FILES[".mcp.json"]);
+    });
+
+    it("files DUO created are still deleted on remove, and so is the empty .codex/ it created", () => {
+      const p = initialized({});
+      for (const agent of AGENTS) expect(install(p, [agent, "--yes"]).code).toBe(0);
+      for (const agent of AGENTS) {
+        const r = install(p, ["remove", agent, "--yes"]);
+        expect(r.code, r.stderr).toBe(0);
+      }
+      for (const file of Object.keys(EMPTY_USER_FILES)) expect(fs.existsSync(path.join(p.root, file)), file).toBe(false);
+      expect(fs.existsSync(path.join(p.root, ".codex"))).toBe(false);
+    });
+
+    it("without a valid ownership record (an install by DUO 0.3.4 or earlier, a cleaned runtime, a corrupted record) remove deletes nothing and says why", () => {
+      const p = initialized({ ".mcp.json": EMPTY_USER_FILES[".mcp.json"] });
+      for (const agent of AGENTS) expect(install(p, [agent, "--yes"]).code).toBe(0);
+      fs.rmSync(path.join(p.root, RECORD("claude-code")));
+      fs.writeFileSync(path.join(p.root, RECORD("codex")), "{ not json");
+      for (const agent of AGENTS) {
+        const r = install(p, ["remove", agent, "--yes"]);
+        expect(r.code, `${agent}: ${r.stderr}`).toBe(0);
+        const plan = r.json().result.plan;
+        expect(plan.willDelete, agent).toEqual([]);
+        expect(plan.warnings.join("\n"), agent).toMatch(agent === "codex" ? /invalid|record/i : /no install record/);
+      }
+      // Kept, with DUO's part taken out: the user's .mcp.json and the files DUO created whose origin can no longer be proven.
+      expect(JSON.parse(p.read(".mcp.json"))).toEqual({ mcpServers: {} });
+      for (const file of ["CLAUDE.md", "AGENTS.md", ".codex/config.toml"]) {
+        expect(fs.existsSync(path.join(p.root, file)), file).toBe(true);
+        expect(p.read(file), file).not.toContain("duo-director");
+      }
+    });
+  });
+
+
   it("cross-language (T18.0): Java, C#, C++, Python, TypeScript and an unknown language in one repository parse with the packaged grammars", () => {
     const root = tmp("duo-poly-");
     fs.cpSync(path.join(REPO, "fixtures", "languages", "polyglot"), root, { recursive: true });
