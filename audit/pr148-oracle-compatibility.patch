@@ -1,0 +1,28 @@
+diff --git a/bench/concurrency/oracle.mjs b/bench/concurrency/oracle.mjs
+index ca4b64d..2a6f0b7 100644
+--- a/bench/concurrency/oracle.mjs
++++ b/bench/concurrency/oracle.mjs
+@@ -15,6 +15,7 @@ import { execFileSync } from "node:child_process";
+ import fs from "node:fs";
+ import os from "node:os";
+ import path from "node:path";
++import { tryAcquireFileLock } from "../../packages/graph/dist/store/node-sqlite/file-lock.js";
+ import { createDefaultAnalyzerRegistry } from "@duo-director/analyzer";
+ import {
+   createDecisionService,
+@@ -77,6 +78,15 @@ function inspectStateFiles(root) {
+         continue;
+       }
+       if (entry.name.endsWith(".lock") || entry.name.endsWith(".duo.bak")) {
++        if (relPath === ".duo-project/generated/index-writer.lock") {
++          try {
++            const held = tryAcquireFileLock(fullPath);
++            if (held !== undefined) {
++              held.release();
++              continue;
++            }
++          } catch { /* Unreadable or invalid locks remain failures. */ }
++        }
+         danglingLocks.push(relPath);
+         continue;
+       }

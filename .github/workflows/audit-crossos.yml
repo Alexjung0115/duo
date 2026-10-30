@@ -1,0 +1,50 @@
+name: audit-crossos
+
+# Cross-OS rerun of the PR-143 post-merge audit checks. Report-only: step exit codes are printed, not gated.
+on:
+  push:
+    branches: [audit/pr143-crossos]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: ${{ matrix.target }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        target: [original, pr148, pr149]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: audit-src
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: check out target commit
+        run: |
+          case "${{ matrix.target }}" in
+            original) sha=749b2e494d4dc9b71fe8bc765d761722b40bbe99 ;;
+            pr148) sha=ab3cc3ca39d73550e2ee7b631d5d8399078797bc ;;
+            pr149) sha=51b2d1e4d06be9f05dcbd022cd149172645846b2 ;;
+          esac
+          git init -q target
+          git -C target fetch -q --depth=1 https://github.com/kanghyunsoon/duo.git "$sha"
+          git -C target checkout -q --detach FETCH_HEAD
+          test "$(git -C target rev-parse HEAD)" = "$sha"
+          git config --global user.name "duo audit"
+          git config --global user.email "duo-audit@example.invalid"
+      - run: npm install -g pnpm@11.25.0
+      - name: install and build
+        working-directory: target
+        run: pnpm install --frozen-lockfile && pnpm build
+      - name: audit checks
+        run: bash audit-src/audit/run-target.sh "${{ matrix.target }}" "$GITHUB_WORKSPACE/target"
