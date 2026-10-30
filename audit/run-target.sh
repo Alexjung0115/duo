@@ -45,7 +45,8 @@ if [ "$target" = original ]; then
   step concurrency node audit-concurrency.mjs
 else
   extra=(); [ "$target" = pr149 ] && extra=($INCR/review-149-config-window.test.ts)
-  step focused vt focused $INCR/refresh-errors.test.ts $INCR/refresh.e2e.test.ts tests/cli/index-lock.e2e.test.ts "${extra[@]}"
+  # macOS ships bash 3.2, where an empty array expansion fails under set -u.
+  step focused vt focused $INCR/refresh-errors.test.ts $INCR/refresh.e2e.test.ts tests/cli/index-lock.e2e.test.ts ${extra[@]+"${extra[@]}"}
   step protection vt protection $INCR/audit-protection.test.ts
   step hardlink vt hardlink $INCR/audit-hardlink.test.ts
   step oracle-selftest node --test audit-oracle-lock.test.mjs
