@@ -2,6 +2,13 @@
 
 > 이 포크에서는 제가 맡은 Codex·Claude Code 연동과 MCP 서버 작업을 소개합니다. [주요 기여와 병합 PR](CONTRIBUTIONS.md)
 
+## 기여에 사용한 기술
+
+| 분야 | 기술 | 적용한 작업 |
+| --- | --- | --- |
+| MCP·에이전트 연동 | TypeScript, Node.js, MCP | Codex·Claude Code 연결과 사용자 설정 파일 보존 로직에 기여 |
+| 테스트·CI | pnpm, Vitest, GitHub Actions | 설정 파일의 설치·갱신·제거를 회귀 테스트로 검증하고 Windows·macOS·Ubuntu에서 확인 |
+
 [![npm](https://img.shields.io/npm/v/@duo-director/cli)](https://www.npmjs.com/package/@duo-director/cli)
 [![CI](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
