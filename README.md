@@ -1,5 +1,7 @@
 # DUO
 
+> 이 포크에서는 제가 맡은 Codex·Claude Code 연동과 MCP 서버 작업을 소개합니다. [주요 기여와 병합 PR](CONTRIBUTIONS.md)
+
 [![npm](https://img.shields.io/npm/v/@duo-director/cli)](https://www.npmjs.com/package/@duo-director/cli)
 [![CI](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kanghyunsoon/duo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
